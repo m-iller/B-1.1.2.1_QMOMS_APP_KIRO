@@ -1,5 +1,8 @@
-from pydantic import BaseModel, ConfigDict, field_validator
 import math
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, field_validator
+
 
 class IngestTelemetryRequest(BaseModel):
     machine_id: str
@@ -23,11 +26,13 @@ class IngestTelemetryRequest(BaseModel):
             raise ValueError(f"sensor_type must be one of {valid}")
         return v
 
+
 class TelemetryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: str
     machine_id: str
     sensor_type: str
     normalized_value: float
     canonical_unit: str
-    timestamp: str
+    timestamp: datetime

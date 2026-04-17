@@ -1,5 +1,8 @@
+from datetime import datetime
 from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
+
 
 class CreateTaskRequest(BaseModel):
     machine_id: str
@@ -8,23 +11,27 @@ class CreateTaskRequest(BaseModel):
     priority: str  # low|medium|high|critical
     deadline: str  # ISO8601
 
+
 class UpdateTaskRequest(BaseModel):
     state: Optional[str] = None  # pending|active|completed|validated
 
+
 class TaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: str
     machine_id: str
     title: str
-    description: Optional[str]
+    description: Optional[str] = None
     priority: str
     state: str
-    deadline: str
+    deadline: datetime
     pending_activation: bool
     overdue: bool
-    created_by: Optional[str]
-    created_at: str
-    updated_at: str
+    created_by: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
 
 class CreateHaulCycleRequest(BaseModel):
     machine_id: str
@@ -33,8 +40,10 @@ class CreateHaulCycleRequest(BaseModel):
     payload_tonnes: float
     start_time: str  # ISO8601
 
+
 class HaulCycleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: str
     machine_id: str
     origin_zone_id: str
@@ -42,6 +51,6 @@ class HaulCycleResponse(BaseModel):
     payload_tonnes: float
     status: str
     immutable: bool
-    start_time: str
-    end_time: Optional[str]
-    created_at: str
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    created_at: datetime

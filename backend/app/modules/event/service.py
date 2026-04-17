@@ -45,5 +45,5 @@ def _to_event_response(event) -> EventResponse:
         payload=event.payload if event.payload else {},
         shift_id=str(event.shift_id) if event.shift_id else None,
         expired=event.expired,
-        created_at=str(event.created_at),
+        created_at=event.created_at,
     )

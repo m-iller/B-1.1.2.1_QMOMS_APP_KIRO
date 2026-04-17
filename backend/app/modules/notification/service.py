@@ -54,5 +54,5 @@ def _to_response(notification) -> NotificationResponse:
         payload=notification.payload if notification.payload else {},
         read=notification.read,
         shift_id=str(notification.shift_id) if notification.shift_id else None,
-        created_at=str(notification.created_at),
+        created_at=notification.created_at,
     )

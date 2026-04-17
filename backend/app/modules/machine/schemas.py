@@ -1,4 +1,6 @@
+from datetime import datetime
 from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -24,11 +26,11 @@ class MachineResponse(BaseModel):
     type: str
     current_state: str
     conflict_active: bool
-    assigned_dispatcher_id: Optional[str]
-    current_zone_id: Optional[str]
-    pos_x: Optional[float]
-    pos_y: Optional[float]
-    created_at: str
+    assigned_dispatcher_id: Optional[str] = None
+    current_zone_id: Optional[str] = None
+    pos_x: Optional[float] = None
+    pos_y: Optional[float] = None
+    created_at: datetime
 
 
 class ConflictResponse(BaseModel):
@@ -39,6 +41,6 @@ class ConflictResponse(BaseModel):
     dispatcher_state: str
     operator_state: str
     resolved: bool
-    resolved_by_user_id: Optional[str]
-    resolved_at: Optional[str]
-    created_at: str
+    resolved_by_user_id: Optional[str] = None
+    resolved_at: Optional[datetime] = None
+    created_at: datetime

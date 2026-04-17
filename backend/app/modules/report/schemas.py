@@ -1,4 +1,6 @@
+from datetime import datetime
 from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -33,8 +35,9 @@ class ReportData(BaseModel):
 
 class ReportResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: str
     shift_id: str
-    generated_by: Optional[str]
+    generated_by: Optional[str] = None
     data: dict
-    generated_at: str
+    generated_at: datetime

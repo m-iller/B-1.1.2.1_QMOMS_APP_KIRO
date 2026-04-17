@@ -89,16 +89,16 @@ JWT_EXPIRES_IN=3600
 
 **4. Start PostgreSQL with TimescaleDB**
 
-If you don't have TimescaleDB locally, use Docker just for the database:
+If you don't have TimescaleDB locally, use Docker just for the database.
 
+**PowerShell:**
+```powershell
+docker run -d --name quarry-db -e POSTGRES_USER=quarry_user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=quarry_monitor -p 5432:5432 timescale/timescaledb:latest-pg15
+```
+
+**bash / CMD:**
 ```bash
-docker run -d \
-  --name quarry-db \
-  -e POSTGRES_USER=quarry_user \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=quarry_monitor \
-  -p 5432:5432 \
-  timescale/timescaledb:latest-pg15
+docker run -d --name quarry-db -e POSTGRES_USER=quarry_user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=quarry_monitor -p 5432:5432 timescale/timescaledb:latest-pg15
 ```
 
 **5. Run database migrations**

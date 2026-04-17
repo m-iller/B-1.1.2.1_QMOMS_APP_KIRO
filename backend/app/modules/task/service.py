@@ -1,45 +1,54 @@
 from datetime import datetime, timezone
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.common.exceptions import NotFoundException, ForbiddenException
+
+from app.common.exceptions import ForbiddenException, NotFoundException
 from app.modules.task import repository
 from app.modules.task.schemas import CreateTaskRequest, TaskResponse, UpdateTaskRequest
+
 
 def _compute_overdue(task) -> bool:
     if task.state in ("completed", "validated"):
         return False
     try:
-        deadline = datetime.fromisoformat(str(task.deadline).replace("Z", "+00:00"))
+        deadline = task.deadline
+        if isinstance(deadline, str):
+            deadline = datetime.fromisoformat(deadline.replace("Z", "+00:00"))
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=timezone.utc)
         return deadline < datetime.now(timezone.utc)
     except Exception:
         return False
 
+
 def _to_response(task) -> TaskResponse:
-    data = {
-        "id": str(task.id),
-        "machine_id": str(task.machine_id),
-        "title": task.title,
-        "description": task.description,
-        "priority": task.priority,
-        "state": task.state,
-        "deadline": str(task.deadline),
-        "pending_activation": task.pending_activation,
-        "overdue": _compute_overdue(task),
-        "created_by": str(task.created_by) if task.created_by else None,
-        "created_at": str(task.created_at),
-        "updated_at": str(task.updated_at),
-    }
-    return TaskResponse(**data)
+    return TaskResponse(
+        id=str(task.id),
+        machine_id=str(task.machine_id),
+        title=task.title,
+        description=task.description,
+        priority=task.priority,
+        state=task.state,
+        deadline=task.deadline,
+        pending_activation=task.pending_activation,
+        overdue=_compute_overdue(task),
+        created_by=str(task.created_by) if task.created_by else None,
+        created_at=task.created_at,
+        updated_at=task.updated_at,
+    )
+
 
 async def find_all(machine_id: str | None, state: str | None, db: AsyncSession) -> list[TaskResponse]:
     tasks = await repository.get_all_tasks(machine_id, state, db)
     return [_to_response(t) for t in tasks]
+
 
 async def find_by_id(task_id: str, db: AsyncSession) -> TaskResponse:
     task = await repository.get_task_by_id(task_id, db)
     if task is None:
         raise NotFoundException(f"Task {task_id} not found")
     return _to_response(task)
+
 
 async def create(payload: CreateTaskRequest, actor, db: AsyncSession, event_service=None) -> TaskResponse:
     task = await repository.create_task(
@@ -53,12 +62,24 @@ async def create(payload: CreateTaskRequest, actor, db: AsyncSession, event_serv
     )
     if event_service:
         try:
-            await event_service.emit(machine_id=payload.machine_id, event_type="TASK_CREATED", payload={"task_id": str(task.id)}, db=db)
+            await event_service.emit(
+                machine_id=payload.machine_id,
+                event_type="TASK_CREATED",
+                payload={"task_id": str(task.id)},
+                db=db,
+            )
         except Exception:
             pass
     return _to_response(task)
 
-async def update_state(task_id: str, payload: UpdateTaskRequest, actor, db: AsyncSession, event_service=None) -> TaskResponse:
+
+async def update_state(
+    task_id: str,
+    payload: UpdateTaskRequest,
+    actor,
+    db: AsyncSession,
+    event_service=None,
+) -> TaskResponse:
     task = await repository.get_task_by_id(task_id, db)
     if task is None:
         raise NotFoundException(f"Task {task_id} not found")
@@ -80,11 +101,17 @@ async def update_state(task_id: str, payload: UpdateTaskRequest, actor, db: Asyn
 
     if new_state == "completed" and event_service:
         try:
-            await event_service.emit(machine_id=str(task.machine_id), event_type="TASK_COMPLETED", payload={"task_id": task_id}, db=db)
+            await event_service.emit(
+                machine_id=str(task.machine_id),
+                event_type="TASK_COMPLETED",
+                payload={"task_id": task_id},
+                db=db,
+            )
         except Exception:
             pass
 
     return _to_response(task)
+
 
 async def confirm_activation(task_id: str, actor, db: AsyncSession) -> TaskResponse:
     if actor.role != "dispatcher":
