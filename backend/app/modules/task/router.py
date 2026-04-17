@@ -25,7 +25,7 @@ async def list_tasks(
 async def create_task(
     payload: CreateTaskRequest,
     db: AsyncSession = Depends(get_db),
-    actor=Depends(require_roles(["operator", "dispatcher"])),
+    actor=Depends(require_roles(["operator", "dispatcher", "admin", "manager"])),
 ):
     return await service.create(payload, actor, db, _event_service)
 
@@ -42,7 +42,7 @@ async def update_task(
     task_id: str,
     payload: UpdateTaskRequest,
     db: AsyncSession = Depends(get_db),
-    actor=Depends(require_roles(["operator", "dispatcher"])),
+    actor=Depends(require_roles(["operator", "dispatcher", "admin", "manager"])),
 ):
     return await service.update_state(task_id, payload, actor, db, _event_service)
 

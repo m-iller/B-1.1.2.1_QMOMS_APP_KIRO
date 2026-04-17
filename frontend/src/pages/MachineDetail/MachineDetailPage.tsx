@@ -20,12 +20,12 @@ export function MachineDetailPage() {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <h2>{machine.name}</h2>
-        {machine.conflictActive && <ConflictBadge />}
+        {machine.conflict_active && <ConflictBadge />}
       </div>
       <ErrorBanner error={machineError} />
-      <p><strong>State:</strong> {machine.currentState}</p>
+      <p><strong>State:</strong> {machine.current_state}</p>
       <p><strong>Type:</strong> {machine.type}</p>
-      {machine.currentZoneId && <p><strong>Zone:</strong> {machine.currentZoneId}</p>}
+      {machine.current_zone_id && <p><strong>Zone:</strong> {machine.current_zone_id}</p>}
       <hr />
       <TelemetrySummary records={telemetry ?? []} />
       <hr />

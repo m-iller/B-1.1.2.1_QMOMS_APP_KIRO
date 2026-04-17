@@ -1,3 +1,5 @@
+// All field names match the FastAPI snake_case response format exactly
+
 export interface User {
   id: string
   username: string
@@ -13,84 +15,84 @@ export interface Machine {
   id: string
   name: string
   type: string
-  currentState: string
-  conflictActive: boolean
-  assignedDispatcherId: string | null
-  currentZoneId: string | null
-  posX: number | null
-  posY: number | null
-  createdAt: string
+  current_state: string
+  conflict_active: boolean
+  assigned_dispatcher_id: string | null
+  current_zone_id: string | null
+  pos_x: number | null
+  pos_y: number | null
+  created_at: string
 }
 
 export interface TelemetryRecord {
   id: string
-  machineId: string
-  sensorType: string
-  normalizedValue: number
-  canonicalUnit: string
+  machine_id: string
+  sensor_type: string
+  normalized_value: number
+  canonical_unit: string
   timestamp: string
 }
 
 export interface Task {
   id: string
-  machineId: string
+  machine_id: string
   title: string
   description: string | null
   priority: string
   state: string
   deadline: string
-  pendingActivation: boolean
+  pending_activation: boolean
   overdue: boolean
-  createdBy: string | null
-  createdAt: string
-  updatedAt: string
+  created_by: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface HaulCycle {
   id: string
-  machineId: string
-  originZoneId: string
-  destinationZoneId: string
-  payloadTonnes: number
+  machine_id: string
+  origin_zone_id: string
+  destination_zone_id: string
+  payload_tonnes: number
   status: string
   immutable: boolean
-  startTime: string
-  endTime: string | null
-  createdAt: string
+  start_time: string
+  end_time: string | null
+  created_at: string
 }
 
 export interface Event {
   id: string
-  machineId: string | null
-  eventType: string
+  machine_id: string | null
+  event_type: string
   payload: Record<string, unknown>
-  shiftId: string | null
+  shift_id: string | null
   expired: boolean
-  createdAt: string
+  created_at: string
 }
 
 export interface Zone {
   id: string
   name: string
   description: string | null
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Report {
   id: string
-  shiftId: string
-  generatedBy: string | null
+  shift_id: string
+  generated_by: string | null
   data: Record<string, unknown>
-  generatedAt: string
+  generated_at: string
 }
 
 export interface Notification {
   id: string
-  userId: string
+  user_id: string
   type: string
   payload: Record<string, unknown>
   read: boolean
-  shiftId: string | null
-  createdAt: string
+  shift_id: string | null
+  created_at: string
 }

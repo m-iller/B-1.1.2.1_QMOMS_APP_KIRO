@@ -16,7 +16,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       const notifs = await getNotifications({ read: false })
       setUnreadCount(notifs.length)
     } catch {
-      // ignore
+      // ignore — don't crash on polling errors
     }
   }
 

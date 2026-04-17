@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
@@ -11,7 +12,20 @@ import { NotificationsPage } from './pages/Notifications/NotificationsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
-  if (!token) return <Navigate to="/login" replace />
+  const [checked, setChecked] = useState(false)
+  const [hasToken, setHasToken] = useState(false)
+
+  useEffect(() => {
+    // Check localStorage synchronously — React state may lag one render behind
+    const stored = localStorage.getItem('access_token')
+    setHasToken(!!(token || stored))
+    setChecked(true)
+  }, [token])
+
+  // Wait for the check before rendering anything
+  if (!checked) return null
+
+  if (!hasToken) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 

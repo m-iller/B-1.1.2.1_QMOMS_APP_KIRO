@@ -17,9 +17,9 @@ export function TaskTable({ tasks }: Props) {
         {tasks.map(t => (
           <tr key={t.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
             <td style={{ padding: '8px 12px' }}>{t.title}</td>
-            <td style={{ padding: '8px 12px', fontSize: 13, color: '#6b7280' }}>{t.machineId}</td>
+            <td style={{ padding: '8px 12px', fontSize: 13, color: '#6b7280' }}>{t.machine_id}</td>
             <td style={{ padding: '8px 12px' }}>{t.priority}</td>
-            <td style={{ padding: '8px 12px' }}>{t.state}{t.pendingActivation && ' (pending)'}</td>
+            <td style={{ padding: '8px 12px' }}>{t.state}{t.pending_activation && ' (pending)'}</td>
             <td style={{ padding: '8px 12px', fontSize: 13 }}>{new Date(t.deadline).toLocaleDateString()}</td>
             <td style={{ padding: '8px 12px' }}>{t.overdue && <OverdueBadge />}</td>
           </tr>

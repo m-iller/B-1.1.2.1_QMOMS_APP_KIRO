@@ -16,10 +16,11 @@ export function LoginPage() {
     setLoading(true)
     try {
       await login(username, password)
-      navigate('/')
+      // Small delay to ensure localStorage and React state are both updated
+      // before ProtectedRoute checks them
+      setTimeout(() => navigate('/'), 50)
     } catch {
       setError('Invalid username or password')
-    } finally {
       setLoading(false)
     }
   }
@@ -30,14 +31,27 @@ export function LoginPage() {
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 12 }}>
           <label>Username</label>
-          <input value={username} onChange={e => setUsername(e.target.value)} style={{ display: 'block', width: '100%', padding: 8, marginTop: 4 }} />
+          <input
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            style={{ display: 'block', width: '100%', padding: 8, marginTop: 4 }}
+          />
         </div>
         <div style={{ marginBottom: 12 }}>
           <label>Password</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} style={{ display: 'block', width: '100%', padding: 8, marginTop: 4 }} />
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            style={{ display: 'block', width: '100%', padding: 8, marginTop: 4 }}
+          />
         </div>
         {error && <p style={{ color: '#dc2626', marginBottom: 8 }}>{error}</p>}
-        <button type="submit" disabled={loading} style={{ width: '100%', padding: 10, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        <button
+          type="submit"
+          disabled={loading}
+          style={{ width: '100%', padding: 10, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+        >
           {loading ? 'Logging in...' : 'Login'}
         </button>
       </form>

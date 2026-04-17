@@ -10,9 +10,9 @@ export function TelemetrySummary({ records }: Props) {
       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
         <tbody>
           {records.map(r => (
-            <tr key={r.sensorType} style={{ borderBottom: '1px solid #e5e7eb' }}>
-              <td style={{ padding: '4px 8px', fontWeight: 600 }}>{r.sensorType}</td>
-              <td style={{ padding: '4px 8px' }}>{r.normalizedValue.toFixed(2)} {r.canonicalUnit}</td>
+            <tr key={r.sensor_type} style={{ borderBottom: '1px solid #e5e7eb' }}>
+              <td style={{ padding: '4px 8px', fontWeight: 600 }}>{r.sensor_type}</td>
+              <td style={{ padding: '4px 8px' }}>{r.normalized_value.toFixed(2)} {r.canonical_unit}</td>
               <td style={{ padding: '4px 8px', color: '#9ca3af', fontSize: 12 }}>{new Date(r.timestamp).toLocaleTimeString()}</td>
             </tr>
           ))}

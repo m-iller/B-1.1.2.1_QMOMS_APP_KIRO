@@ -7,6 +7,7 @@ const client = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+// Attach JWT to every request
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token')
   if (token) {
@@ -15,4 +16,5 @@ client.interceptors.request.use((config) => {
   return config
 })
 
+// Do NOT auto-redirect on 401 — let components handle errors gracefully
 export default client

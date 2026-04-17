@@ -20,7 +20,7 @@ export function NotificationItem({ notification, onRead }: Props) {
       <div>
         <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: 11 }}>{notification.type}</span>
         <p style={{ margin: '4px 0 0', fontSize: 13 }}>{JSON.stringify(notification.payload)}</p>
-        <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>{new Date(notification.createdAt).toLocaleString()}</p>
+        <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>{new Date(notification.created_at).toLocaleString()}</p>
       </div>
       {!notification.read && (
         <button onClick={handleRead} style={{ padding: '4px 10px', fontSize: 12, background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
