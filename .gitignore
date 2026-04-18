@@ -1,6 +1,41 @@
-/.kiro
-/.vscode.env
-node_modules/
-.venv/
+# Environment files
 .env
-.pyc
+.env.local
+.env.*.local
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.hypothesis/
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.cache/
+
+# Database data
+pgdata/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kiro
+.kiro/

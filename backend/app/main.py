@@ -1,3 +1,4 @@
+import traceback
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException, Request
@@ -57,11 +58,13 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    return _error_response(request, 500, "Internal server error", "Internal Server Error")
+    # Print full traceback to uvicorn console for debugging
+    traceback.print_exc()
+    return _error_response(request, 500, str(exc), "Internal Server Error")
 
 
 # ---------------------------------------------------------------------------
-# Module routers (stub imports — routers will be implemented in later tasks)
+# Module routers
 # ---------------------------------------------------------------------------
 try:
     from app.modules.auth.router import router as auth_router

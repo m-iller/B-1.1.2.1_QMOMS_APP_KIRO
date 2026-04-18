@@ -1,4 +1,4 @@
-from sqlalchemy import Float, ForeignKey, PrimaryKeyConstraint, text
+from sqlalchemy import DateTime, Float, ForeignKey, PrimaryKeyConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,7 +22,7 @@ class TelemetryData(Base):
     sensor_type: Mapped[str] = mapped_column(nullable=False)
     normalized_value: Mapped[float] = mapped_column(Float, nullable=False)
     canonical_unit: Mapped[str] = mapped_column(nullable=False)
-    timestamp: Mapped[str] = mapped_column(nullable=False)
+    timestamp: Mapped[str] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class Anomaly(Base):

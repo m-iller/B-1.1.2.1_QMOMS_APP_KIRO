@@ -10,23 +10,33 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [SIM] %(message)s")
 logger = logging.getLogger(__name__)
 
 
+async def fetch_machine_ids(client: ApiClient, interval_s: float) -> list[str]:
+    """Fetch machine IDs from API, retrying until at least one is found."""
+    while True:
+        try:
+            machines = await client.get_machines()
+            ids = [m["id"] for m in machines]
+            if ids:
+                logger.info(f"Found {len(ids)} machines: {ids}")
+                return ids
+            else:
+                logger.warning("No machines found. Retrying in %.1fs...", interval_s)
+        except Exception as e:
+            logger.error(f"Failed to fetch machines: {e}. Retrying in {interval_s}s...")
+        await asyncio.sleep(interval_s)
+
+
 async def run_simulation() -> None:
     client = ApiClient()
     interval_s = settings.INTERVAL_MS / 1000
 
     # Resolve machine IDs
-    machine_ids: list[str] = []
     if settings.MACHINE_IDS:
         machine_ids = [m.strip() for m in settings.MACHINE_IDS.split(",") if m.strip()]
+        logger.info(f"Using configured machine IDs: {machine_ids}")
     else:
         logger.info("Fetching machine IDs from API...")
-        try:
-            machines = await client.get_machines()
-            machine_ids = [m["id"] for m in machines]
-            logger.info(f"Found {len(machine_ids)} machines: {machine_ids}")
-        except Exception as e:
-            logger.error(f"Failed to fetch machines: {e}. Retrying in {interval_s}s...")
-            await asyncio.sleep(interval_s)
+        machine_ids = await fetch_machine_ids(client, interval_s)
 
     # Track positions per machine
     positions: dict[str, tuple[float, float]] = {mid: (400.0, 250.0) for mid in machine_ids}
