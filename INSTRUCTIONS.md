@@ -14,6 +14,7 @@ Detailed setup and development instructions for each component of the Quarry Min
 6. [Tests](#tests)
 7. [Docker (Full Stack)](#docker-full-stack)
 8. [API Reference](#api-reference)
+9. [Known Issues & Fixes](#known-issues--fixes)
 
 ---
 
@@ -21,11 +22,13 @@ Detailed setup and development instructions for each component of the Quarry Min
 
 | Tool | Minimum Version | Notes |
 |---|---|---|
-| Python | 3.11 | Required for backend and simulator |
+| Python | 3.10+ | Required for backend and simulator |
 | Node.js | 20 | Required for frontend |
 | Docker | 24 | Required for containerized deployment |
 | Docker Compose | 2.x | Included with Docker Desktop |
 | PostgreSQL | 15 | Only needed for local dev without Docker |
+
+> Python 3.10 is supported. The `str | None` union syntax works from 3.10+.
 
 ---
 
@@ -33,8 +36,8 @@ Detailed setup and development instructions for each component of the Quarry Min
 
 Copy the example env file and fill in secrets:
 
-```bash
-cp .env.example .env
+```powershell
+Copy-Item .env.example .env
 ```
 
 Edit `.env`:
@@ -60,26 +63,32 @@ The backend is a Python/FastAPI modular monolith located in `backend/`.
 
 **1. Create and activate a virtual environment**
 
-```bash
+```powershell
 cd backend
 python -m venv .venv
-
-# Windows
 .venv\Scripts\activate
-
-# macOS / Linux
-source .venv/bin/activate
 ```
 
 **2. Install dependencies**
 
-```bash
+```powershell
 pip install -e ".[dev]"
 ```
 
+> If you get `BackendUnavailable: Cannot import 'setuptools.backends.legacy'`, your setuptools is outdated. Run:
+> ```powershell
+> pip install --upgrade setuptools pip
+> pip install -e ".[dev]"
+> ```
+
+> If bcrypt fails with `module 'bcrypt' has no attribute '__about__'`, pin bcrypt:
+> ```powershell
+> pip install "bcrypt>=3.2.0,<4.0.0" --force-reinstall
+> ```
+
 **3. Set environment variables**
 
-Create `backend/.env` (or export variables) with at minimum:
+Create `backend/.env`:
 
 ```env
 DATABASE_URL=postgresql+asyncpg://quarry_user:password@localhost:5432/quarry_monitor
@@ -91,60 +100,86 @@ JWT_EXPIRES_IN=3600
 
 If you don't have TimescaleDB locally, use Docker just for the database.
 
-**PowerShell:**
+**PowerShell (single line):**
 ```powershell
-docker run -d --name quarry-db -e POSTGRES_USER=quarry_user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=quarry_monitor -p 5432:5432 timescale/timescaledb:latest-pg15
-```
-
-**bash / CMD:**
-```bash
 docker run -d --name quarry-db -e POSTGRES_USER=quarry_user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=quarry_monitor -p 5432:5432 timescale/timescaledb:latest-pg15
 ```
 
 **5. Run database migrations**
 
-```bash
-cd backend
+```powershell
 alembic upgrade head
 ```
 
 **6. Seed the database**
 
-```bash
+```powershell
 python -m app.seed
 ```
 
 **7. Start the development server**
 
-```bash
+```powershell
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 The API is now available at:
 - API: http://localhost:8000
 - Interactive docs (Swagger): http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Health check: http://localhost:8000/health
+
+### Using Swagger UI
+
+1. Open http://localhost:8000/docs
+2. Click **Authorize** (top right)
+3. Enter `username` and `password` (leave `client_id` and `client_secret` blank)
+4. Click **Authorize** → **Close**
+5. All endpoints are now authenticated
+
+> The Swagger Authorize button uses `POST /auth/token` (form data).
+> The frontend uses `POST /auth/login` (JSON body). Both work.
+
+### Default Credentials (after seed)
+
+| Username | Password | Role |
+|---|---|---|
+| `operator` | `operatorpass123` | operator |
+| `dispatcher` | `dispatcherpass123` | dispatcher |
+| `manager` | `managerpass123` | manager |
+| `admin` | `adminpass123` | admin |
+| `mechanic` | `mechanicpass123` | mechanic |
+| `it` | `itpass123` | IT |
+| `owner` | `ownerpass123` | owner |
+
+### Role Permissions
+
+| Action | Allowed Roles |
+|---|---|
+| Create/update machines | admin, dispatcher |
+| Update machine state | dispatcher, operator |
+| Resolve conflicts | dispatcher |
+| Create/update tasks | operator, dispatcher, admin, manager |
+| Validate tasks | dispatcher only |
+| Create haul cycles | dispatcher |
+| Generate reports | manager, dispatcher, admin, owner |
+| View events | manager, dispatcher, admin, owner |
+| Create shifts | admin |
+| Delete zones | admin |
 
 ### Alembic Migration Commands
 
-```bash
+```powershell
 # Apply all pending migrations
 alembic upgrade head
 
 # Roll back one migration
 alembic downgrade -1
 
-# Roll back all migrations
-alembic downgrade base
-
 # Generate a new migration from model changes
 alembic revision --autogenerate -m "describe_your_change"
 
 # Show current migration state
 alembic current
-
-# Show migration history
-alembic history
 ```
 
 ### Module Structure
@@ -170,20 +205,6 @@ backend/app/
     └── notification/    # User notifications
 ```
 
-Each module follows: `router.py → service.py → repository.py → models.py + schemas.py`
-
-### Configuration Reference
-
-All settings are loaded from environment variables via `app/config.py`:
-
-| Variable | Type | Description |
-|---|---|---|
-| `DATABASE_URL` | str | SQLAlchemy async connection string |
-| `JWT_SECRET` | str | Secret key for JWT signing |
-| `JWT_EXPIRES_IN` | int | Token expiry in seconds |
-| `PORT` | int | Server port (default: 8000) |
-| `CORS_ORIGINS` | list | Allowed CORS origins (default: `["*"]`) |
-
 ---
 
 ## Client (Frontend)
@@ -194,10 +215,17 @@ The frontend is a React + TypeScript SPA located in `frontend/`.
 
 **1. Install dependencies**
 
-```bash
+```powershell
 cd frontend
 npm install
 ```
+
+> If you get ERESOLVE errors, clean and reinstall:
+> ```powershell
+> Remove-Item -Recurse -Force node_modules
+> Remove-Item package-lock.json
+> npm install
+> ```
 
 **2. Configure API URL**
 
@@ -207,57 +235,52 @@ Create `frontend/.env.local`:
 VITE_API_URL=http://localhost:8000
 ```
 
+> Important: use `localhost` (not `127.0.0.1`) to match the frontend origin and avoid CORS errors.
+
 **3. Start the development server**
 
-```bash
+```powershell
 npm run dev
 ```
 
 The app is available at http://localhost:5173
 
-### Build for Production
+> If the browser shows "connection refused", try http://127.0.0.1:5173 instead.
+> The `vite.config.ts` uses `host: '0.0.0.0'` to bind on all interfaces.
 
-```bash
-npm run build
-```
+### Login
 
-Output is in `frontend/dist/`. The Dockerfile serves this via nginx.
+Navigate to http://localhost:5173/login and enter credentials from the seed data above.
+
+> The dashboard redirects to `/login` if no token is found in localStorage. This is expected behavior — log in first.
 
 ### Available Scripts
 
-```bash
+```powershell
 npm run dev        # Start Vite dev server (hot reload)
 npm run build      # TypeScript compile + Vite production build
 npm run preview    # Preview production build locally
-npm run test       # Run Vitest tests (single run, no watch)
+npm run test       # Run Vitest tests (single run)
 ```
 
 ### Page Overview
 
-| Route | Page | Polling |
+| Route | Page | Polling interval |
 |---|---|---|
 | `/login` | Login | — |
-| `/` | Dashboard — machine list + status | `GET /machines` every 7s |
-| `/map` | Map View — machine positions on quarry layout | `GET /machines` every 7s |
-| `/machines/:id` | Machine Detail — state, telemetry, tasks | Multiple endpoints every 7s |
-| `/tasks` | Task Panel — active tasks, create task form | `GET /tasks` every 7s |
-| `/notifications` | Notifications — alerts and conflicts | `GET /notifications` every 7s |
+| `/` | Dashboard — machine list + status | 7s |
+| `/map` | Map View — machine positions | 7s |
+| `/machines/:id` | Machine Detail — state, telemetry, tasks | 7s |
+| `/tasks` | Task Panel — active tasks, create form | 7s |
+| `/notifications` | Notifications — alerts and conflicts | 7s |
 
 ### Authentication Flow
 
-1. User submits credentials on `/login`
+1. Submit credentials on `/login`
 2. `POST /auth/login` returns a JWT
 3. JWT stored in `localStorage` as `access_token`
 4. All API requests include `Authorization: Bearer <token>` header
-5. On 401 response, user is redirected to `/login`
-
-### Electron Compatibility
-
-The frontend is structured for future Electron packaging:
-- No server-side rendering dependencies
-- All API calls use configurable `VITE_API_URL`
-- React Router uses `BrowserRouter` (swap to `HashRouter` for Electron)
-- No WebSocket dependencies — polling only
+5. On logout, token is cleared and user is redirected to `/login`
 
 ---
 
@@ -269,76 +292,55 @@ The telemetry simulator is a Python async script in `simulator/`. It generates r
 
 **1. Create and activate a virtual environment**
 
-```bash
+```powershell
 cd simulator
 python -m venv .venv
-
-# Windows
 .venv\Scripts\activate
-
-# macOS / Linux
-source .venv/bin/activate
 ```
 
 **2. Install dependencies**
 
-```bash
+```powershell
 pip install -e .
 ```
 
 **3. Configure**
 
-Create `simulator/.env` or export environment variables:
+Create `simulator/.env`:
 
 ```env
 API_URL=http://localhost:8000
-API_TOKEN=your_sim_token
+API_TOKEN=your_jwt_token_here
 INTERVAL_MS=5000
-# Optional: comma-separated machine UUIDs to simulate
-# If empty, machine IDs are fetched from GET /machines
+# Optional: comma-separated machine UUIDs
+# If empty, fetched automatically from GET /machines
 MACHINE_IDS=
 ```
 
-The `API_TOKEN` must match a valid JWT. The easiest approach is to log in as any user and use that token, or create a dedicated service account.
+**4. Get a token for the simulator**
 
-**4. Run the simulator**
+```powershell
+curl -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d "{\"username\": \"dispatcher\", \"password\": \"dispatcherpass123\"}"
+```
 
-```bash
+Copy the `access_token` value and set it as `API_TOKEN` in `simulator/.env`.
+
+**5. Run the simulator**
+
+```powershell
 python -m simulator.main
 ```
 
-The simulator will:
-1. Fetch machine IDs from `GET /machines` (or use `MACHINE_IDS` env var)
-2. Every `INTERVAL_MS` milliseconds, for each machine:
-   - Generate random values for `engine_temp`, `fuel_level`, `speed`, `payload_weight`
-   - Update machine position (random walk within quarry grid)
-   - POST each reading to `POST /telemetry`
-3. Log errors and continue — never crashes on API failure
-
 ### Sensor Ranges and Thresholds
 
-| Sensor | Unit | Range | Anomaly Threshold |
+| Sensor | Unit | Generated Range | Anomaly Threshold |
 |---|---|---|---|
 | `engine_temp` | celsius | 60–130 | > 110°C |
 | `fuel_level` | percent | 0–100 | < 10% |
 | `speed` | kmh | 0–90 | > 80 km/h |
 | `payload_weight` | tonnes | 0–70 | > 60t |
 
-Values are generated to occasionally exceed thresholds, triggering anomaly detection and alert notifications.
-
-### Getting a Simulator Token
-
-Option 1 — use the seeded dispatcher account:
-
-```bash
-curl -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "dispatcher", "password": "dispatcherpass123"}'
-```
-
-Copy the `access_token` from the response and set it as `API_TOKEN`.
-
-Option 2 — set `SIM_API_TOKEN` in `.env` and configure the backend to accept it as a static token (requires custom auth middleware — not implemented by default).
+Values occasionally exceed thresholds to trigger anomaly detection and alert notifications.
 
 ---
 
@@ -348,73 +350,50 @@ All property-based tests are in `backend/tests/` and use [hypothesis](https://hy
 
 ### Setup
 
-```bash
+```powershell
 cd backend
 pip install -e ".[dev]"
 ```
 
 ### Run All Tests
 
-```bash
-cd backend
+```powershell
 pytest
 ```
 
 ### Run a Specific Test File
 
-```bash
-pytest tests/test_auth_properties.py
-pytest tests/test_machine_properties.py
-pytest tests/test_telemetry_properties.py
-pytest tests/test_task_properties.py
-pytest tests/test_event_zone_report_notification_properties.py
-```
-
-### Run with Verbose Output
-
-```bash
-pytest -v
+```powershell
+pytest tests/test_auth_properties.py -v
+pytest tests/test_machine_properties.py -v
+pytest tests/test_telemetry_properties.py -v
+pytest tests/test_task_properties.py -v
+pytest tests/test_event_zone_report_notification_properties.py -v
 ```
 
 ### Run with Coverage
 
-```bash
+```powershell
 pip install pytest-cov
 pytest --cov=app --cov-report=term-missing
 ```
 
 ### Test Files and Coverage
 
-| File | Properties | Modules Covered |
+| File | Properties | What is tested |
 |---|---|---|
-| `test_auth_properties.py` | 1–4 | JWT round-trip, invalid credentials, role enforcement, password hashing |
-| `test_machine_properties.py` | 5–12 | State priority, conflict detection, source recording, schema validation |
-| `test_telemetry_properties.py` | 13–15 | Payload validation, normalization correctness, threshold detection |
-| `test_task_properties.py` | 16–23 | Task lifecycle, overdue logic, operator confirmation, haul cycle immutability |
-| `test_event_zone_report_notification_properties.py` | 24–34 | Event filtering, shift expiry, zone guards, report roles, notification ownership |
+| `test_auth_properties.py` | 1–4 | JWT round-trip, wrong secret rejection, malformed token rejection, role enforcement, password hashing |
+| `test_machine_properties.py` | 5–12 | State priority invariant, conflict detection, source recording, schema validation |
+| `test_telemetry_properties.py` | 13–15 | Payload validation (NaN/Inf rejection), all unit conversions, threshold detection |
+| `test_task_properties.py` | 16–23 | Task lifecycle, overdue logic, operator confirmation flow, haul cycle immutability |
+| `test_event_zone_report_notification_properties.py` | 24–34 | Event filtering, shift expiry, zone guards, report role restriction, notification ownership |
 
-### Property-Based Testing Notes
+### Notes
 
-- Each `@given` test runs **100 examples** by default (`@settings(max_examples=100)`)
-- Tests use `sys.modules` stubs to avoid requiring a live database
-- Pure functions are tested directly: `resolve_effective_state`, `normalize`, `exceeds_threshold`, `_compute_overdue_logic`
-- Hypothesis stores its database in `backend/.hypothesis/` — commit this to get reproducible shrunk examples
-
-### Hypothesis Settings
-
-Global settings are in `backend/pyproject.toml`:
-
-```toml
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
-```
-
-To increase examples for a deeper search:
-
-```bash
-pytest --hypothesis-seed=0 -k test_normalization
-```
+- Each `@given` test runs **100 examples** (`@settings(max_examples=100)`)
+- Tests use `sys.modules` stubs — no live database required
+- Pure functions tested directly: `resolve_effective_state`, `normalize`, `exceeds_threshold`
+- Hypothesis stores its database in `backend/.hypothesis/` — commit this for reproducible shrunk examples
 
 ---
 
@@ -422,19 +401,19 @@ pytest --hypothesis-seed=0 -k test_normalization
 
 ### Start Everything
 
-```bash
+```powershell
 docker-compose up --build
 ```
 
 ### Start in Background
 
-```bash
+```powershell
 docker-compose up -d --build
 ```
 
 ### View Logs
 
-```bash
+```powershell
 docker-compose logs -f backend
 docker-compose logs -f simulator
 docker-compose logs -f frontend
@@ -442,54 +421,48 @@ docker-compose logs -f frontend
 
 ### Stop All Services
 
-```bash
+```powershell
 docker-compose down
 ```
 
 ### Stop and Remove Volumes (wipes database)
 
-```bash
+```powershell
 docker-compose down -v
-```
-
-### Rebuild a Single Service
-
-```bash
-docker-compose up --build backend
 ```
 
 ### Run Seed After First Start
 
-```bash
+```powershell
 docker-compose exec backend python -m app.seed
 ```
 
 ### Run Migrations Manually
 
-Migrations run automatically on backend startup (`alembic upgrade head` in the Docker entrypoint). To run manually:
+Migrations run automatically on backend startup. To run manually:
 
-```bash
+```powershell
 docker-compose exec backend alembic upgrade head
 ```
 
 ### Service Ports
 
-| Service | Host Port | Container Port |
+| Service | Host Port | Notes |
 |---|---|---|
-| backend | 8000 | 8000 |
-| frontend | 80 | 80 |
-| db | 5432 | 5432 |
-| simulator | — | — (no exposed port) |
+| backend | 8000 | API + Swagger docs |
+| frontend | 80 | Served via nginx |
+| db | 5432 | PostgreSQL + TimescaleDB |
+| simulator | — | No exposed port |
 
 ---
 
 ## API Reference
 
-Full interactive documentation is available at http://localhost:8000/docs when the backend is running.
+Full interactive docs: http://localhost:8000/docs
 
 ### Authentication
 
-All endpoints except `POST /auth/login` require a `Bearer` token:
+All endpoints except `POST /auth/login` and `POST /auth/token` require:
 
 ```
 Authorization: Bearer <access_token>
@@ -498,57 +471,82 @@ Authorization: Bearer <access_token>
 ### Key Endpoints
 
 ```
-POST   /auth/login                          Login, returns JWT
-GET    /auth/me                             Current user info
+POST   /auth/login                              Login with JSON body (frontend)
+POST   /auth/token                              Login with form data (Swagger UI)
+GET    /auth/me                                 Current user info
 
-GET    /machines                            List all machines
-POST   /machines                            Create machine (admin, dispatcher)
-GET    /machines/{id}                       Get machine by ID
-PATCH  /machines/{id}/state                 Update machine state (dispatcher, operator)
-PATCH  /machines/{id}/dispatcher            Assign dispatcher (admin, dispatcher)
-POST   /machines/{id}/conflicts/{cid}/resolve  Resolve conflict (dispatcher)
+GET    /machines                                List all machines
+POST   /machines                                Create machine (admin, dispatcher)
+GET    /machines/{id}                           Get machine by ID
+PATCH  /machines/{id}/state                     Update state (dispatcher, operator)
+PATCH  /machines/{id}/dispatcher                Assign dispatcher (admin, dispatcher)
+POST   /machines/{id}/conflicts/{cid}/resolve   Resolve conflict (dispatcher)
 
-POST   /telemetry                           Ingest telemetry reading
-GET    /telemetry/{machine_id}/latest       Latest reading per sensor type
-GET    /telemetry/{machine_id}/history      Time-range history
+POST   /telemetry                               Ingest telemetry reading
+GET    /telemetry/{machine_id}/latest           Latest reading per sensor type
+GET    /telemetry/{machine_id}/history          Time-range history
 
-GET    /tasks                               List tasks (?machine_id=&state=)
-POST   /tasks                               Create task (operator, dispatcher)
-GET    /tasks/{id}                          Get task by ID
-PATCH  /tasks/{id}                          Update task state
-POST   /tasks/{id}/confirm-activation       Dispatcher confirms operator activation
+GET    /tasks                                   List tasks (?machine_id=&state=)
+POST   /tasks                                   Create task (operator, dispatcher, admin, manager)
+GET    /tasks/{id}                              Get task by ID
+PATCH  /tasks/{id}                              Update task state
+POST   /tasks/{id}/confirm-activation           Dispatcher confirms operator activation
 
-GET    /haul-cycles                         List haul cycles
-POST   /haul-cycles                         Create haul cycle (dispatcher)
-PATCH  /haul-cycles/{id}/complete           Complete haul cycle (dispatcher)
+GET    /haul-cycles                             List haul cycles
+POST   /haul-cycles                             Create haul cycle (dispatcher)
+PATCH  /haul-cycles/{id}/complete               Complete haul cycle (dispatcher)
 
-GET    /events                              List events (?machine_id=&event_type=&shift_id=)
-GET    /shifts                              List shifts
-POST   /shifts                              Create shift (admin)
-PATCH  /shifts/{id}/end                     End shift, expires events (admin)
+GET    /events                                  List events (?machine_id=&event_type=&shift_id=)
+GET    /shifts                                  List shifts
+POST   /shifts                                  Create shift (admin)
+PATCH  /shifts/{id}/end                         End shift, expires events (admin)
 
-GET    /zones                               List zones
-POST   /zones                               Create zone (admin, dispatcher)
-PATCH  /zones/{id}                          Update zone (admin, dispatcher)
-DELETE /zones/{id}                          Delete zone (admin)
-POST   /zones/{id}/machines                 Assign machine to zone (dispatcher)
-GET    /zones/{id}/machines                 Get machines in zone
+GET    /zones                                   List zones
+POST   /zones                                   Create zone (admin, dispatcher)
+PATCH  /zones/{id}                              Update zone (admin, dispatcher)
+DELETE /zones/{id}                              Delete zone (admin)
+POST   /zones/{id}/machines                     Assign machine to zone (dispatcher)
+GET    /zones/{id}/machines                     Get machines in zone
 
-GET    /reports                             List reports
-POST   /reports/generate                    Generate shift report
+GET    /reports                                 List reports
+POST   /reports/generate                        Generate shift report
 
-GET    /notifications                       User's notifications (?type=&read=)
-PATCH  /notifications/{id}/read             Mark notification as read
+GET    /notifications                           User notifications (?type=&read=)
+PATCH  /notifications/{id}/read                 Mark notification as read
 ```
 
-### Role Permissions Summary
+---
 
-| Role | Machines | Tasks | Reports | Admin |
-|---|---|---|---|---|
-| operator | read, update state | create, update | — | — |
-| dispatcher | full | full | generate | assign dispatcher |
-| manager | read | read | read | — |
-| admin | full | read | generate | full |
-| mechanic | read | read | — | — |
-| IT | read | read | — | — |
-| owner | read | read | read | — |
+## Known Issues & Fixes
+
+### `BackendUnavailable: Cannot import 'setuptools.backends.legacy'`
+Old setuptools. Fix:
+```powershell
+pip install --upgrade setuptools pip
+```
+
+### `module 'bcrypt' has no attribute '__about__'`
+bcrypt 4.x is incompatible with passlib. Fix:
+```powershell
+pip install "bcrypt>=3.2.0,<4.0.0" --force-reinstall
+```
+
+### CORS error from frontend to backend
+Caused by `allow_credentials=True` + `allow_origins=["*"]` — invalid combination per CORS spec.
+Fixed in `backend/app/main.py` — `allow_credentials=False`.
+Also ensure `VITE_API_URL=http://localhost:8000` (not `127.0.0.1`) in `frontend/.env.local`.
+
+### Dashboard disappears after login
+Was caused by `ProtectedRoute` reading stale React state before localStorage was checked.
+Fixed — `ProtectedRoute` now checks localStorage directly as fallback.
+
+### `TypeError: Cannot read properties of undefined (reading 'toUpperCase')`
+API returns snake_case (`current_state`) but frontend types used camelCase (`currentState`).
+Fixed — all frontend types in `api.types.ts` now use snake_case matching the API.
+
+### PowerShell `--` flag errors
+PowerShell treats `--name` as a unary operator. Use single-line commands without `\` continuation.
+
+### `422 Unprocessable Entity` on `POST /auth/login` from Swagger
+Swagger Authorize button sends form data, but `/auth/login` expects JSON.
+Fixed — added `POST /auth/token` endpoint that accepts form data for Swagger UI.
