@@ -1,7 +1,16 @@
+from datetime import datetime, timezone
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.telemetry.models import Anomaly, TelemetryData
+
+
+def _parse_timestamp(ts: str) -> datetime:
+    """Parse ISO8601 string to timezone-aware datetime for asyncpg."""
+    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 async def insert_telemetry(
@@ -12,11 +21,11 @@ async def insert_telemetry(
     timestamp: str,
     db: AsyncSession,
 ) -> TelemetryData:
-    # Use raw INSERT RETURNING to avoid refresh issues with TimescaleDB composite PK
+    ts_dt = _parse_timestamp(timestamp)
     result = await db.execute(
         text("""
             INSERT INTO telemetry_data (machine_id, sensor_type, normalized_value, canonical_unit, timestamp)
-            VALUES (:machine_id, :sensor_type, :normalized_value, :canonical_unit, :timestamp::timestamptz)
+            VALUES (:machine_id, :sensor_type, :normalized_value, :canonical_unit, :timestamp)
             RETURNING id, machine_id, sensor_type, normalized_value, canonical_unit, timestamp
         """),
         {
@@ -24,7 +33,7 @@ async def insert_telemetry(
             "sensor_type": sensor_type,
             "normalized_value": normalized_value,
             "canonical_unit": canonical_unit,
-            "timestamp": timestamp,
+            "timestamp": ts_dt,
         },
     )
     await db.commit()
@@ -92,14 +101,16 @@ async def get_history(
     sensor_type: str | None,
     db: AsyncSession,
 ) -> list[TelemetryData]:
+    from_dt_parsed = _parse_timestamp(from_dt)
+    to_dt_parsed = _parse_timestamp(to_dt)
     q = """
         SELECT id, machine_id, sensor_type, normalized_value, canonical_unit, timestamp
         FROM telemetry_data
         WHERE machine_id = :machine_id
-          AND timestamp >= :from_dt::timestamptz
-          AND timestamp <= :to_dt::timestamptz
+          AND timestamp >= :from_dt
+          AND timestamp <= :to_dt
     """
-    params: dict = {"machine_id": machine_id, "from_dt": from_dt, "to_dt": to_dt}
+    params: dict = {"machine_id": machine_id, "from_dt": from_dt_parsed, "to_dt": to_dt_parsed}
     if sensor_type:
         q += " AND sensor_type = :sensor_type"
         params["sensor_type"] = sensor_type
