@@ -320,10 +320,10 @@ MACHINE_IDS=
 **4. Get a token for the simulator**
 
 ```powershell
-curl -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d "{\"username\": \"dispatcher\", \"password\": \"dispatcherpass123\"}"
+Invoke-WebRequest -Uri "http://localhost:8000/auth/login" -Method POST -ContentType "application/json" -Body '{"username": "dispatcher", "password": "dispatcherpass123"}' | Select-Object -ExpandProperty Content
 ```
 
-Copy the `access_token` value and set it as `API_TOKEN` in `simulator/.env`.
+Or open http://localhost:8000/docs, call `POST /auth/login` from Swagger, and copy the `access_token` from the response.
 
 **5. Run the simulator**
 
