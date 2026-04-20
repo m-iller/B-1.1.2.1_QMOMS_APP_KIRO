@@ -4,15 +4,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.telemetry import repository
 from app.modules.telemetry.normalizer import normalize, CANONICAL_UNITS
 from app.modules.telemetry.thresholds import exceeds_threshold, derive_machine_state
-from app.modules.telemetry.schemas import IngestTelemetryRequest, TelemetryResponse
+from app.modules.telemetry.schemas import (
+    IngestTelemetryRequest,
+    PositionTelemetryResponse,
+    TelemetryResponse,
+    POSITION_SENSOR_TYPES,
+)
 
-async def ingest(payload: IngestTelemetryRequest, db: AsyncSession, event_service=None, notification_service=None) -> TelemetryResponse:
+async def ingest(payload: IngestTelemetryRequest, db: AsyncSession, event_service=None, notification_service=None):
+    from app.modules.machine.repository import get_machine_by_id, insert_machine_state, update_position
+
     # Validate machine exists
-    from app.modules.machine.repository import get_machine_by_id, insert_machine_state
     machine = await get_machine_by_id(payload.machine_id, db)
     if machine is None:
         raise HTTPException(status_code=404, detail=f"Machine {payload.machine_id} not found")
 
+    # --- Position sensor bypass ---
+    # pos_x (longitude) and pos_y (latitude) update the machine record directly.
+    # They are NOT stored in telemetry_data and bypass normalization/anomaly detection.
+    if payload.sensor_type in POSITION_SENSOR_TYPES:
+        axis = "x" if payload.sensor_type == "pos_x" else "y"
+        await update_position(payload.machine_id, axis, payload.value, db)
+        return PositionTelemetryResponse(
+            sensor_type=payload.sensor_type,
+            value=payload.value,
+            machine_id=payload.machine_id,
+        )
+
+    # --- Standard sensor pipeline ---
     # Normalize
     try:
         normalized_value = normalize(payload.sensor_type, payload.value, payload.unit)
@@ -68,7 +87,7 @@ async def ingest(payload: IngestTelemetryRequest, db: AsyncSession, event_servic
     try:
         latest = await repository.get_latest_by_machine(payload.machine_id, db)
         readings = {r.sensor_type: r.normalized_value for r in latest}
-        readings[payload.sensor_type] = normalized_value  # include current reading
+        readings[payload.sensor_type] = normalized_value
         derived_state = derive_machine_state(readings)
         if derived_state:
             await insert_machine_state(
@@ -83,9 +102,11 @@ async def ingest(payload: IngestTelemetryRequest, db: AsyncSession, event_servic
 
     return TelemetryResponse.model_validate(record)
 
+
 async def get_latest_by_machine(machine_id: str, db: AsyncSession) -> list[TelemetryResponse]:
     records = await repository.get_latest_by_machine(machine_id, db)
     return [TelemetryResponse.model_validate(r) for r in records]
+
 
 async def get_history(machine_id: str, from_dt: str, to_dt: str, sensor_type: str | None, db: AsyncSession) -> list[TelemetryResponse]:
     records = await repository.get_history(machine_id, from_dt, to_dt, sensor_type, db)

@@ -1,7 +1,8 @@
+from typing import Union
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_user, get_db, require_roles
-from app.modules.telemetry.schemas import IngestTelemetryRequest, TelemetryResponse
+from app.modules.telemetry.schemas import IngestTelemetryRequest, PositionTelemetryResponse, TelemetryResponse
 from app.modules.telemetry import service
 
 router = APIRouter()
@@ -18,7 +19,7 @@ try:
 except (ImportError, Exception):
     _notification_service = None
 
-@router.post("", response_model=TelemetryResponse, status_code=201)
+@router.post("", response_model=Union[TelemetryResponse, PositionTelemetryResponse], status_code=201)
 async def ingest_telemetry(
     payload: IngestTelemetryRequest,
     db: AsyncSession = Depends(get_db),

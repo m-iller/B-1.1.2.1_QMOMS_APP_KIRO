@@ -3,10 +3,14 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+POSITION_SENSOR_TYPES = {"pos_x", "pos_y"}
+STANDARD_SENSOR_TYPES = {"engine_temp", "fuel_level", "speed", "payload_weight"}
+ALL_SENSOR_TYPES = STANDARD_SENSOR_TYPES | POSITION_SENSOR_TYPES
+
 
 class IngestTelemetryRequest(BaseModel):
     machine_id: str
-    sensor_type: str  # engine_temp|fuel_level|speed|payload_weight
+    sensor_type: str
     value: float
     unit: str
     timestamp: str
@@ -21,9 +25,8 @@ class IngestTelemetryRequest(BaseModel):
     @field_validator("sensor_type")
     @classmethod
     def valid_sensor_type(cls, v):
-        valid = {"engine_temp", "fuel_level", "speed", "payload_weight"}
-        if v not in valid:
-            raise ValueError(f"sensor_type must be one of {valid}")
+        if v not in ALL_SENSOR_TYPES:
+            raise ValueError(f"sensor_type must be one of {ALL_SENSOR_TYPES}")
         return v
 
 
@@ -36,3 +39,10 @@ class TelemetryResponse(BaseModel):
     normalized_value: float
     canonical_unit: str
     timestamp: datetime
+
+
+class PositionTelemetryResponse(BaseModel):
+    """Lightweight response for pos_x/pos_y telemetry — no DB record created."""
+    sensor_type: str
+    value: float
+    machine_id: str

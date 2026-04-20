@@ -96,3 +96,24 @@ export interface Notification {
   shift_id: string | null
   created_at: string
 }
+
+// Map module types
+export interface AntennaDefinition {
+  name: string
+  lat: number
+  lng: number
+}
+
+export interface MapConfig {
+  center_lat: number
+  center_lng: number
+  default_zoom: number
+  antennas: AntennaDefinition[]
+}
+
+export interface MapConfigRequest {
+  center_lat: number
+  center_lng: number
+  default_zoom: number
+  antennas: AntennaDefinition[]
+}

@@ -51,6 +51,21 @@ async def update_machine_position(machine_id: str, pos_x: float, pos_y: float, d
     await db.commit()
 
 
+async def update_position(
+    machine_id: str,
+    axis: str,  # "x" or "y"
+    value: float,
+    db: AsyncSession,
+) -> None:
+    """Update a single position axis (pos_x or pos_y) on a machine record."""
+    machine = await get_machine_by_id(machine_id, db)
+    if axis == "x":
+        machine.pos_x = value
+    else:
+        machine.pos_y = value
+    await db.commit()
+
+
 async def get_latest_machine_state_by_source(
     machine_id: str, source: str, db: AsyncSession
 ) -> MachineState | None:

@@ -114,6 +114,12 @@ try:
 except ImportError:
     pass
 
+try:
+    from app.modules.map_config.router import router as map_config_router
+    app.include_router(map_config_router, prefix="/map-config", tags=["map_config"])
+except ImportError:
+    pass
+
 
 # ---------------------------------------------------------------------------
 # Health check
