@@ -1,10 +1,17 @@
 {
-  "center_lat": -26.2041,
-  "center_lng": 28.0473,
+  "center_lat": 60.0,
+  "center_lng": 60.0,
   "default_zoom": 15,
   "antennas": [
-    { "name": "Antenna A", "lat": -26.2035, "lng": 28.0460 },
-    { "name": "Antenna B", "lat": -26.2050, "lng": 28.0490 },
-    { "name": "Antenna C", "lat": -26.2030, "lng": 28.0500 }
+    {
+      "name": "Antenna A",
+      "lat": 60.0,
+      "lng": 60.0
+    },
+    {
+      "name": "Antenna 2",
+      "lat": 60.0525,
+      "lng": 60.0525
+    }
   ]
 }
