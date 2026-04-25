@@ -37,7 +37,8 @@ GENERATORS = {
 
 
 def update_position(lat: float, lng: float, settings) -> tuple[float, float]:
-    """Random walk within the configured quarry bounding box (lat/lng degrees)."""
+    """Random walk within the configured quarry bounding box (lat/lng degrees).
+    Step size ~22m. Position clamped to quarry bounds."""
     step = 0.0002  # ~22m per step at equator
     new_lat = lat + random.uniform(-step, step)
     new_lng = lng + random.uniform(-step, step)

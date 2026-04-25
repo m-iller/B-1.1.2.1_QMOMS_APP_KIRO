@@ -48,6 +48,11 @@ export function MachineMarkerLeaflet({ machine }: Props) {
           {machine.conflict_active && (
             <div style={{ color: '#d97706', fontSize: 12, marginTop: 2 }}>⚠ Conflict active</div>
           )}
+          {machine.pos_x !== null && machine.pos_y !== null && (
+            <div style={{ color: '#6b7280', fontSize: 11, marginTop: 4, fontFamily: 'monospace' }}>
+              {machine.pos_y?.toFixed(5)}, {machine.pos_x?.toFixed(5)}
+            </div>
+          )}
           <button
             onClick={() => navigate(`/machines/${machine.id}`)}
             style={{

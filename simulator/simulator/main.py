@@ -62,14 +62,18 @@ async def fetch_map_center(client: ApiClient) -> tuple[float, float]:
     return lat, lng
 
 
-def scatter_near(center_lat: float, center_lng: float, radius: float = 0.002) -> tuple[float, float]:
+def scatter_near(center_lat: float, center_lng: float, radius: float = 0.01) -> tuple[float, float]:
     """
     Return a random position within `radius` degrees of center.
-    radius=0.002 ≈ 220m — machines start spread around the map center.
+    radius=0.01 ≈ 1.1km — machines start spread near the map center.
+    Max allowed deviation from center is 0.05 degrees.
     """
     lat = center_lat + random.uniform(-radius, radius)
     lng = center_lng + random.uniform(-radius, radius)
-    # Clamp to quarry bounds
+    # Clamp to ±0.05 from center (hard limit)
+    lat = max(center_lat - 0.05, min(center_lat + 0.05, lat))
+    lng = max(center_lng - 0.05, min(center_lng + 0.05, lng))
+    # Also clamp to quarry bounds
     lat = max(settings.QUARRY_MIN_LAT, min(settings.QUARRY_MAX_LAT, lat))
     lng = max(settings.QUARRY_MIN_LNG, min(settings.QUARRY_MAX_LNG, lng))
     return round(lat, 7), round(lng, 7)

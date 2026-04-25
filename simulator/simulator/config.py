@@ -10,11 +10,11 @@ class Settings(BaseSettings):
     # Comma-separated machine IDs to simulate; if empty, fetched from API
     MACHINE_IDS: str = ""
 
-    # Quarry bounding box for lat/lng random walk (Johannesburg area defaults)
-    QUARRY_MIN_LAT: float = -26.2100
-    QUARRY_MAX_LAT: float = -26.1980
-    QUARRY_MIN_LNG: float = 28.0400
-    QUARRY_MAX_LNG: float = 28.0550
+    # Quarry bounding box — max ±0.05 degrees from map center (~5.5km)
+    QUARRY_MIN_LAT: float = -26.2541   # center -26.2041 - 0.05
+    QUARRY_MAX_LAT: float = -26.1541   # center -26.2041 + 0.05
+    QUARRY_MIN_LNG: float = 27.9973    # center 28.0473 - 0.05
+    QUARRY_MAX_LNG: float = 28.0973    # center 28.0473 + 0.05
 
     # Antenna definitions as JSON string: [{"name":"A","lat":...,"lng":...}, ...]
     # Number of antennas is configurable — add/remove entries here
