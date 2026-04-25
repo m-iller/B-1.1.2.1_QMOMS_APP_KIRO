@@ -10,11 +10,25 @@ import { ErrorBanner } from '../../components/ErrorBanner'
 
 export function MachineDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { data: machine, error: machineError } = usePolling(() => getMachine(id!), 7000)
-  const { data: telemetry } = usePolling(() => getLatestTelemetry(id!), 7000)
-  const { data: tasks } = usePolling(() => getTasks({ machine_id: id }), 7000)
 
-  if (!machine) return <div>Loading...</div>
+  // Pass id as dep so polling restarts immediately when navigating between machines
+  const { data: machine, error: machineError } = usePolling(
+    () => getMachine(id!),
+    5000,
+    { deps: [id] }
+  )
+  const { data: telemetry } = usePolling(
+    () => getLatestTelemetry(id!),
+    5000,   // 5s — telemetry updates frequently
+    { deps: [id] }
+  )
+  const { data: tasks } = usePolling(
+    () => getTasks({ machine_id: id }),
+    7000,
+    { deps: [id] }
+  )
+
+  if (!machine) return <div style={{ padding: 24, color: '#6b7280' }}>Loading...</div>
 
   return (
     <div>
@@ -26,7 +40,7 @@ export function MachineDetailPage() {
             width: 8, height: 8, borderRadius: '50%', background: '#16a34a',
             display: 'inline-block', animation: 'pulse 2s infinite'
           }} />
-          Live
+          Live · updates every 5s
         </span>
       </div>
       <ErrorBanner error={machineError} />

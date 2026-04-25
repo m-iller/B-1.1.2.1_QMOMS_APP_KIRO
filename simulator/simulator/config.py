@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # Comma-separated machine IDs to simulate; if empty, fetched from API
     MACHINE_IDS: str = ""
 
-    # Max deviation from map center in degrees (≈ 5.5km at equator)
+    # Max deviation from map center in degrees
     # Bounding box is computed at runtime: center ± POSITION_RADIUS
     POSITION_RADIUS: float = 0.1
 
