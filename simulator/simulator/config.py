@@ -13,14 +13,14 @@ class Settings(BaseSettings):
 
     # Max deviation from map center in degrees (≈ 5.5km at equator)
     # Bounding box is computed at runtime: center ± POSITION_RADIUS
-    POSITION_RADIUS: float = 0.05
+    POSITION_RADIUS: float = 0.1
 
     # Antenna definitions as JSON string: [{"name":"A","lat":...,"lng":...}, ...]
     # If empty, antennas are fetched from GET /map-config at startup
     ANTENNAS_JSON: str = ""
 
     # Gaussian noise std dev in degrees (≈ 2m at equator ≈ 0.000018 degrees)
-    POSITION_NOISE_STD: float = 0.000018
+    POSITION_NOISE_STD: float = 0.0002
 
 
 settings = Settings()
