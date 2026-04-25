@@ -11,7 +11,7 @@ const DEFAULT_ANTENNAS: AntennaDefinition[] = [
 
 export function MapConfigForm() {
   const { user } = useAuth()
-  const canEdit = user?.role === 'dispatcher' || user?.role === 'admin'
+  const canEdit = user?.role === 'dispatcher' || user?.role === 'admin' || user?.role === 'dev'
 
   const [open, setOpen] = useState(false)
   const [centerLat, setCenterLat] = useState('')
@@ -131,6 +131,10 @@ export function MapConfigForm() {
             <button type="submit" disabled={status === 'saving'}
               style={{ padding: '6px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
               {status === 'saving' ? 'Saving...' : 'Save Configuration'}
+            </button>
+            <button type="button" onClick={() => setOpen(false)}
+              style={{ padding: '6px 14px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
+              ← Back
             </button>
             {status === 'success' && <span style={{ color: '#16a34a', fontSize: 13 }}>✓ Saved</span>}
             {status === 'error' && <span style={{ color: '#dc2626', fontSize: 13 }}>{errorMsg}</span>}

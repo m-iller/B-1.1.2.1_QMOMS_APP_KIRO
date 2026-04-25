@@ -3,21 +3,26 @@ import { useNotifications } from '../../context/NotificationContext'
 import { NavBadge } from './NavBadge'
 import { useAuth } from '../../context/AuthContext'
 
-const NAV_ITEMS = [
-  { to: '/', label: 'Dashboard' },
-  { to: '/map', label: 'Map View' },
-  { to: '/tasks', label: 'Tasks' },
-  { to: '/notifications', label: 'Notifications', badge: true },
-]
+const MAP_ROLES = ['dispatcher', 'admin', 'dev']
+const TASK_ROLES = ['operator', 'dispatcher', 'manager', 'admin', 'dev']
+const NOTIFICATION_ROLES = ['dispatcher', 'admin', 'dev']
 
 export function Sidebar() {
   const { unreadCount } = useNotifications()
   const { user, logout } = useAuth()
+  const role = user?.role ?? ''
+
+  const navItems = [
+    { to: '/', label: 'Dashboard', show: true },
+    { to: '/map', label: 'Map View', show: MAP_ROLES.includes(role) },
+    { to: '/tasks', label: 'Tasks', show: TASK_ROLES.includes(role) },
+    { to: '/notifications', label: 'Notifications', badge: true, show: NOTIFICATION_ROLES.includes(role) },
+  ].filter(item => item.show)
 
   return (
     <nav style={{ width: 200, background: '#1e293b', color: '#f1f5f9', minHeight: '100vh', padding: 16, display: 'flex', flexDirection: 'column' }}>
       <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 24 }}>⛏ Quarry Monitor</div>
-      {NAV_ITEMS.map(item => (
+      {navItems.map(item => (
         <NavLink
           key={item.to}
           to={item.to}
