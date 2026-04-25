@@ -1,9 +1,21 @@
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import ForbiddenException, NotFoundException
 from app.modules.event.repository import get_active_shift
 from app.modules.notification import repository
 from app.modules.notification.schemas import NotificationResponse
+
+# Roles that receive task notifications
+TASK_NOTIFY_ROLES = ["dispatcher", "admin", "dev"]
+
+
+def _build_payload(name: str, desc: str, bigdesc: str = "", date: str = "", timestamp: str = "") -> dict:
+    if not timestamp:
+        timestamp = datetime.now(timezone.utc).isoformat()
+    if not date:
+        date = timestamp[:10]
+    return {"name": name, "desc": desc, "bigdesc": bigdesc, "date": date, "timestamp": timestamp}
 
 
 class NotificationService:
@@ -20,6 +32,58 @@ class NotificationService:
             shift_id = active_shift.id if active_shift else None
         notification = await repository.insert_notification(user_id, type_, payload, shift_id, db)
         return _to_response(notification)
+
+    async def send(
+        self,
+        user_id: str,
+        type_: str,
+        name: str,
+        desc: str,
+        bigdesc: str,
+        date: str,
+        timestamp: str,
+        db: AsyncSession,
+    ) -> NotificationResponse:
+        payload = _build_payload(name, desc, bigdesc, date, timestamp)
+        return await self.create(user_id, type_, payload, db)
+
+    async def broadcast_to_roles(
+        self,
+        roles: list[str],
+        type_: str,
+        name: str,
+        desc: str,
+        bigdesc: str,
+        db: AsyncSession,
+    ) -> None:
+        """Send notification to all users with given roles."""
+        from app.modules.auth.repository import get_users_by_roles
+        users = await get_users_by_roles(roles, db)
+        payload = _build_payload(name, desc, bigdesc)
+        active_shift = await get_active_shift(db)
+        shift_id = active_shift.id if active_shift else None
+        for user in users:
+            await repository.insert_notification(str(user.id), type_, payload, shift_id, db)
+
+    async def notify_task_created(self, task, db: AsyncSession) -> None:
+        await self.broadcast_to_roles(
+            roles=TASK_NOTIFY_ROLES,
+            type_="system",
+            name=f"Task Created: {task.title}",
+            desc=f"Priority: {task.priority} | Machine: {task.machine_id}",
+            bigdesc=task.description or "",
+            db=db,
+        )
+
+    async def notify_task_state_changed(self, task, old_state: str, db: AsyncSession) -> None:
+        await self.broadcast_to_roles(
+            roles=TASK_NOTIFY_ROLES,
+            type_="system",
+            name=f"Task Updated: {task.title}",
+            desc=f"State: {old_state} → {task.state} | Priority: {task.priority}",
+            bigdesc=task.description or "",
+            db=db,
+        )
 
     async def find_for_user(
         self,

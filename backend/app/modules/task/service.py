@@ -70,6 +70,11 @@ async def create(payload: CreateTaskRequest, actor, db: AsyncSession, event_serv
             )
         except Exception:
             pass
+    try:
+        from app.modules.notification.service import NotificationService
+        await NotificationService().notify_task_created(task, db)
+    except Exception:
+        pass
     return _to_response(task)
 
 
@@ -87,6 +92,8 @@ async def update_state(
     new_state = payload.state
     if new_state is None:
         return _to_response(task)
+
+    current_state = task.state
 
     # Operator requesting activation → set pending_activation flag, don't change state
     if new_state == "active" and actor.role == "operator":
@@ -109,6 +116,12 @@ async def update_state(
             )
         except Exception:
             pass
+
+    try:
+        from app.modules.notification.service import NotificationService
+        await NotificationService().notify_task_state_changed(task, current_state, db)
+    except Exception:
+        pass
 
     return _to_response(task)
 
