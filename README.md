@@ -10,6 +10,7 @@ Production-quality MVP for real-time monitoring of quarry mining operations. Tra
 | Database | PostgreSQL 15 + TimescaleDB |
 | Frontend | React 18, TypeScript, Vite |
 | Simulator | Python 3.11+, httpx |
+| Package manager | uv |
 | Deployment | Docker, Docker Compose |
 
 ## Project Structure

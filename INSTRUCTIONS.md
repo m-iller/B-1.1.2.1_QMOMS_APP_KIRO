@@ -23,12 +23,26 @@ Detailed setup and development instructions for each component of the Quarry Min
 | Tool | Minimum Version | Notes |
 |---|---|---|
 | Python | 3.10+ | Required for backend and simulator |
+| uv | latest | Python package manager — replaces pip/venv |
 | Node.js | 20 | Required for frontend |
 | Docker | 24 | Required for containerized deployment |
 | Docker Compose | 2.x | Included with Docker Desktop |
 | PostgreSQL | 15 | Only needed for local dev without Docker |
 
 > Python 3.10 is supported. The `str | None` union syntax works from 3.10+.
+
+### Install uv
+
+```powershell
+pip install uv
+```
+
+Or via the official installer (recommended):
+```powershell
+irm https://astral.sh/uv/install.ps1 | iex
+```
+
+See https://docs.astral.sh/uv/getting-started/installation/ for full options.
 
 ---
 
@@ -65,26 +79,15 @@ The backend is a Python/FastAPI modular monolith located in `backend/`.
 
 ```powershell
 cd backend
-python -m venv .venv
+uv venv
 .venv\Scripts\activate
 ```
 
 **2. Install dependencies**
 
 ```powershell
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 ```
-
-> If you get `BackendUnavailable: Cannot import 'setuptools.backends.legacy'`, your setuptools is outdated. Run:
-> ```powershell
-> pip install --upgrade setuptools pip
-> pip install -e ".[dev]"
-> ```
-
-> If bcrypt fails with `module 'bcrypt' has no attribute '__about__'`, pin bcrypt:
-> ```powershell
-> pip install "bcrypt>=3.2.0,<4.0.0" --force-reinstall
-> ```
 
 **3. Set environment variables**
 
@@ -294,14 +297,14 @@ The telemetry simulator is a Python async script in `simulator/`. It generates r
 
 ```powershell
 cd simulator
-python -m venv .venv
+uv venv
 .venv\Scripts\activate
 ```
 
 **2. Install dependencies**
 
 ```powershell
-pip install -e .
+uv pip install -e .
 ```
 
 **3. Configure**
@@ -352,7 +355,7 @@ All property-based tests are in `backend/tests/` and use [hypothesis](https://hy
 
 ```powershell
 cd backend
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 ```
 
 ### Run All Tests
@@ -374,7 +377,7 @@ pytest tests/test_event_zone_report_notification_properties.py -v
 ### Run with Coverage
 
 ```powershell
-pip install pytest-cov
+uv pip install pytest-cov
 pytest --cov=app --cov-report=term-missing
 ```
 
@@ -519,17 +522,14 @@ PATCH  /notifications/{id}/read                 Mark notification as read
 
 ## Known Issues & Fixes
 
-### `BackendUnavailable: Cannot import 'setuptools.backends.legacy'`
-Old setuptools. Fix:
-```powershell
-pip install --upgrade setuptools pip
+### `module 'bcrypt' has no attribute '__about__'`
+bcrypt 4.x is incompatible with passlib. Pin in `pyproject.toml` (already done):
+```
+"bcrypt>=3.2.0,<4.0.0"
 ```
 
-### `module 'bcrypt' has no attribute '__about__'`
-bcrypt 4.x is incompatible with passlib. Fix:
-```powershell
-pip install "bcrypt>=3.2.0,<4.0.0" --force-reinstall
-```
+### uv not found after install
+Restart your terminal or add `~/.cargo/bin` (or the uv install path) to `PATH`.
 
 ### CORS error from frontend to backend
 Caused by `allow_credentials=True` + `allow_origins=["*"]` — invalid combination per CORS spec.
