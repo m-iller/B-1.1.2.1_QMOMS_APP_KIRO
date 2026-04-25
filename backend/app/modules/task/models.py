@@ -1,4 +1,5 @@
-from sqlalchemy import Boolean, Float, ForeignKey, Text, UniqueConstraint, text
+from datetime import datetime
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,7 +25,7 @@ class Task(Base):
     state: Mapped[str] = mapped_column(
         nullable=False, server_default=text("'pending'")
     )
-    deadline: Mapped[str] = mapped_column(nullable=False)
+    deadline: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     pending_activation: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("FALSE")
     )
@@ -33,11 +34,11 @@ class Task(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    created_at: Mapped[str] = mapped_column(
-        nullable=False, server_default=text("NOW()")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("NOW()")
     )
-    updated_at: Mapped[str] = mapped_column(
-        nullable=False, server_default=text("NOW()")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("NOW()")
     )
 
 
@@ -92,8 +93,8 @@ class HaulCycle(Base):
     immutable: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("FALSE")
     )
-    start_time: Mapped[str] = mapped_column(nullable=False)
-    end_time: Mapped[str | None] = mapped_column(nullable=True)
-    created_at: Mapped[str] = mapped_column(
-        nullable=False, server_default=text("NOW()")
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("NOW()")
     )

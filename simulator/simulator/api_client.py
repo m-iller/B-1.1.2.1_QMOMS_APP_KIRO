@@ -33,6 +33,11 @@ class ApiClient:
 
     async def create_task(self, payload: dict) -> dict:
         response = await self._client.post("/tasks", json=payload)
+        if response.status_code >= 400:
+            import logging
+            logging.getLogger(__name__).error(
+                f"create_task failed {response.status_code}: {response.text}"
+            )
         response.raise_for_status()
         return response.json()
 

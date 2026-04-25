@@ -1,0 +1,22 @@
+[
+  {"title": "Inspect hydraulic system", "description": "Check hydraulic lines, seals, and fluid levels for leaks or wear.", "priority": "high"},
+  {"title": "Refuel machine", "description": "Top up fuel tank before next shift.", "priority": "medium"},
+  {"title": "Replace drill bit", "description": "Worn drill bit detected. Replace with spare from depot.", "priority": "high"},
+  {"title": "Haul material to Zone B", "description": "Transport excavated material from current position to Zone B stockpile.", "priority": "medium"},
+  {"title": "Perform safety check", "description": "Pre-shift safety inspection per site protocol.", "priority": "critical"},
+  {"title": "Lubricate moving parts", "description": "Apply grease to all joints and pivot points per maintenance schedule.", "priority": "low"},
+  {"title": "Clear debris from path", "description": "Remove rock debris blocking haul road between Zone A and Zone C.", "priority": "medium"},
+  {"title": "Calibrate sensors", "description": "Recalibrate payload and engine sensors after maintenance.", "priority": "low"},
+  {"title": "Check tire pressure", "description": "Inspect and adjust tire pressure on all wheels.", "priority": "low"},
+  {"title": "Operator handover", "description": "Complete shift handover checklist and brief incoming operator.", "priority": "medium"},
+  {"title": "Engine diagnostic", "description": "Run onboard diagnostic after engine warning light triggered.", "priority": "critical"},
+  {"title": "Wash down machine", "description": "Clean machine exterior to prevent corrosion and maintain visibility.", "priority": "low"},
+  {"title": "Replace filters", "description": "Swap air and oil filters per 250-hour service interval.", "priority": "medium"},
+  {"title": "Inspect bucket teeth", "description": "Check excavator bucket teeth for wear; replace if below minimum depth.", "priority": "high"},
+  {"title": "Battery check", "description": "Test battery voltage and terminals before cold-weather shift.", "priority": "medium"},
+  {"title": "Haul material to crusher", "description": "Deliver loaded material to primary crusher station.", "priority": "high"},
+  {"title": "Reposition to Zone D", "description": "Move machine to Zone D for next excavation phase.", "priority": "medium"},
+  {"title": "Coolant level check", "description": "Inspect coolant reservoir and top up if below minimum mark.", "priority": "medium"},
+  {"title": "Track tension adjustment", "description": "Adjust crawler track tension to spec after extended operation.", "priority": "low"},
+  {"title": "Emergency breakdown response", "description": "Machine reported breakdown. Dispatch mechanic and assess damage.", "priority": "critical"}
+]

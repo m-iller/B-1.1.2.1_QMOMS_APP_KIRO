@@ -17,6 +17,8 @@ async def get_task_by_id(task_id: str, db: AsyncSession) -> Task | None:
     return result.scalar_one_or_none()
 
 async def create_task(machine_id, title, description, priority, deadline, created_by, db: AsyncSession) -> Task:
+    if isinstance(deadline, str):
+        deadline = datetime.fromisoformat(deadline.replace("Z", "+00:00"))
     task = Task(machine_id=machine_id, title=title, description=description, priority=priority, deadline=deadline, created_by=created_by, state="pending")
     db.add(task)
     await db.commit()
@@ -26,7 +28,7 @@ async def create_task(machine_id, title, description, priority, deadline, create
 async def update_task_state(task_id: str, state: str, db: AsyncSession) -> Task:
     task = await get_task_by_id(task_id, db)
     task.state = state
-    task.updated_at = datetime.now(timezone.utc).isoformat()
+    task.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(task)
     return task
@@ -34,7 +36,7 @@ async def update_task_state(task_id: str, state: str, db: AsyncSession) -> Task:
 async def set_pending_activation(task_id: str, value: bool, db: AsyncSession) -> Task:
     task = await get_task_by_id(task_id, db)
     task.pending_activation = value
-    task.updated_at = datetime.now(timezone.utc).isoformat()
+    task.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(task)
     return task

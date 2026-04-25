@@ -24,15 +24,15 @@ class Settings(BaseSettings):
 
     # --- Task simulation ---
     # Probability per machine per tick of creating a new task (0.0–1.0)
-    TASK_CREATE_PROB: float = 0.05
+    TASK_CREATE_PROB: float = 0.1
     # Probability per active task per tick of advancing its state
-    TASK_ADVANCE_PROB: float = 0.1
+    TASK_ADVANCE_PROB: float = 0.5
     # Max concurrent tasks per machine
     TASK_MAX_PER_MACHINE: int = 3
 
     # --- Machine state simulation ---
     # Probability per machine per tick of changing state (0.0–1.0)
-    STATE_CHANGE_PROB: float = 0.03
+    STATE_CHANGE_PROB: float = 0.1
 
 
 settings = Settings()

@@ -20,6 +20,90 @@ from hypothesis import strategies as st
 TASK_STATES = ["pending", "active", "completed", "validated"]
 PRIORITIES = ["low", "medium", "high", "critical"]
 
+
+# ---------------------------------------------------------------------------
+# Property 24: Deadline ISO string → datetime coercion
+# repository.create_task receives deadline as ISO string from API layer;
+# it must be parsed to datetime before being passed to SQLAlchemy.
+# **Validates: fix for asyncpg DataError on deadline column**
+# ---------------------------------------------------------------------------
+def _parse_deadline(deadline) -> datetime:
+    """Mirror of the coercion logic in repository.create_task."""
+    if isinstance(deadline, str):
+        return datetime.fromisoformat(deadline.replace("Z", "+00:00"))
+    return deadline
+
+
+@given(
+    deadline=st.datetimes(
+        min_value=datetime(2024, 1, 1),
+        max_value=datetime(2030, 12, 31),
+        timezones=st.just(timezone.utc),
+    ).map(lambda d: d.isoformat()),
+)
+@h_settings(max_examples=200)
+def test_deadline_string_parses_to_datetime(deadline: str):
+    """Property 24a: Any ISO deadline string produced by the simulator parses to datetime."""
+    result = _parse_deadline(deadline)
+    assert isinstance(result, datetime)
+
+
+@given(
+    deadline=st.datetimes(
+        min_value=datetime(2024, 1, 1),
+        max_value=datetime(2030, 12, 31),
+        timezones=st.just(timezone.utc),
+    ),
+)
+@h_settings(max_examples=100)
+def test_deadline_datetime_passthrough(deadline: datetime):
+    """Property 24b: datetime input passes through coercion unchanged."""
+    result = _parse_deadline(deadline)
+    assert result == deadline
+
+
+def test_deadline_z_suffix_parses():
+    """Property 24c: ISO string with Z suffix (UTC shorthand) parses correctly."""
+    result = _parse_deadline("2026-04-26T03:44:38.987125Z")
+    assert isinstance(result, datetime)
+    assert result.tzinfo is not None
+
+
+def test_deadline_offset_suffix_parses():
+    """Property 24d: ISO string with +00:00 offset parses correctly."""
+    result = _parse_deadline("2026-04-26T03:44:38.987125+00:00")
+    assert isinstance(result, datetime)
+    assert result.tzinfo is not None
+
+
+@given(
+    deadline=st.datetimes(
+        min_value=datetime(2024, 1, 1),
+        max_value=datetime(2030, 12, 31),
+        timezones=st.just(timezone.utc),
+    ).map(lambda d: d.isoformat()),
+)
+@h_settings(max_examples=100)
+def test_deadline_coercion_is_idempotent(deadline: str):
+    """Property 24e: Applying coercion twice yields same result as once."""
+    once = _parse_deadline(deadline)
+    twice = _parse_deadline(once)
+    assert once == twice
+
+
+@given(
+    deadline=st.datetimes(
+        min_value=datetime(2024, 1, 1),
+        max_value=datetime(2030, 12, 31),
+        timezones=st.just(timezone.utc),
+    ).map(lambda d: d.isoformat()),
+)
+@h_settings(max_examples=200)
+def test_deadline_coercion_always_timezone_aware(deadline: str):
+    """Property 24f: Coerced deadline is always timezone-aware (required by asyncpg TIMESTAMPTZ)."""
+    result = _parse_deadline(deadline)
+    assert result.tzinfo is not None
+
 # ---------------------------------------------------------------------------
 # Property 16: Task Creation Invariant
 # CreateTaskRequest with valid data should always produce state='pending'
