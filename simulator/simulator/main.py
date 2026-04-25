@@ -1,7 +1,10 @@
 import asyncio
 import json
 import logging
+import random
 from datetime import datetime, timezone
+
+import httpx
 
 from simulator.api_client import ApiClient
 from simulator.config import settings
@@ -17,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 async def fetch_machine_ids(client: ApiClient, interval_s: float) -> list[str]:
-    """Fetch machine IDs from API, retrying until at least one is found."""
+    """Fetch all machine IDs from API, retrying until at least one is found."""
     while True:
         try:
             machines = await client.get_machines()
@@ -26,17 +29,50 @@ async def fetch_machine_ids(client: ApiClient, interval_s: float) -> list[str]:
                 logger.info(f"Found {len(ids)} machines: {ids}")
                 return ids
             else:
-                logger.warning("No machines found. Retrying in %.1fs...", interval_s)
+                logger.warning("No machines found in DB. Retrying in %.1fs...", interval_s)
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"Failed to fetch machines: HTTP {e.response.status_code} "
+                f"{e.response.text[:200]}. Retrying in {interval_s}s..."
+            )
         except Exception as e:
-            import httpx
-            if isinstance(e, httpx.HTTPStatusError):
-                logger.error(
-                    f"Failed to fetch machines: HTTP {e.response.status_code} "
-                    f"{e.response.text[:200]}. Retrying in {interval_s}s..."
-                )
-            else:
-                logger.error(f"Failed to fetch machines: {type(e).__name__}: {e}. Retrying in {interval_s}s...")
+            logger.error(
+                f"Failed to fetch machines: {type(e).__name__}: {e}. "
+                f"Is backend running at {settings.API_URL}? Retrying in {interval_s}s..."
+            )
         await asyncio.sleep(interval_s)
+
+
+async def fetch_map_center(client: ApiClient) -> tuple[float, float]:
+    """
+    Fetch map center from GET /map-config.
+    Falls back to bounding box center if not configured or unreachable.
+    """
+    map_cfg = await client.get_map_config()
+    if map_cfg and "center_lat" in map_cfg and "center_lng" in map_cfg:
+        lat = map_cfg["center_lat"]
+        lng = map_cfg["center_lng"]
+        logger.info(f"Map center from API: ({lat:.4f}, {lng:.4f})")
+        return lat, lng
+
+    # Fallback: midpoint of bounding box
+    lat = (settings.QUARRY_MIN_LAT + settings.QUARRY_MAX_LAT) / 2
+    lng = (settings.QUARRY_MIN_LNG + settings.QUARRY_MAX_LNG) / 2
+    logger.warning(f"Map config not available — using bounding box center: ({lat:.4f}, {lng:.4f})")
+    return lat, lng
+
+
+def scatter_near(center_lat: float, center_lng: float, radius: float = 0.002) -> tuple[float, float]:
+    """
+    Return a random position within `radius` degrees of center.
+    radius=0.002 ≈ 220m — machines start spread around the map center.
+    """
+    lat = center_lat + random.uniform(-radius, radius)
+    lng = center_lng + random.uniform(-radius, radius)
+    # Clamp to quarry bounds
+    lat = max(settings.QUARRY_MIN_LAT, min(settings.QUARRY_MAX_LAT, lat))
+    lng = max(settings.QUARRY_MIN_LNG, min(settings.QUARRY_MAX_LNG, lng))
+    return round(lat, 7), round(lng, 7)
 
 
 async def run_simulation() -> None:
@@ -51,24 +87,24 @@ async def run_simulation() -> None:
         logger.error(f"Failed to parse ANTENNAS_JSON: {e}. Using empty antenna list.")
         antennas = []
 
-    # Resolve machine IDs
-    if settings.MACHINE_IDS:
+    # Resolve machine IDs — use configured list or fetch all from DB
+    if settings.MACHINE_IDS.strip():
         machine_ids = [m.strip() for m in settings.MACHINE_IDS.split(",") if m.strip()]
-        logger.info(f"Using configured machine IDs: {machine_ids}")
+        logger.info(f"Using configured machine IDs ({len(machine_ids)}): {machine_ids}")
     else:
-        logger.info("Fetching machine IDs from API...")
+        logger.info("MACHINE_IDS not set — fetching all machines from DB...")
         machine_ids = await fetch_machine_ids(client, interval_s)
 
-    # Initialize positions at center of quarry bounding box
-    center_lat = (settings.QUARRY_MIN_LAT + settings.QUARRY_MAX_LAT) / 2
-    center_lng = (settings.QUARRY_MIN_LNG + settings.QUARRY_MAX_LNG) / 2
-    positions: dict[str, tuple[float, float]] = {
-        mid: (center_lat, center_lng) for mid in machine_ids
-    }
+    # Fetch map center from API to initialize positions near it
+    center_lat, center_lng = await fetch_map_center(client)
 
+    # Scatter each machine randomly within ~220m of map center
+    positions: dict[str, tuple[float, float]] = {
+        mid: scatter_near(center_lat, center_lng) for mid in machine_ids
+    }
     logger.info(
         f"Starting simulation for {len(machine_ids)} machines at {interval_s}s intervals. "
-        f"Center: ({center_lat:.4f}, {center_lng:.4f})"
+        f"Positions initialized near ({center_lat:.4f}, {center_lng:.4f})"
     )
 
     while True:
@@ -100,7 +136,7 @@ async def run_simulation() -> None:
                 est_lat, est_lng = compute_antenna_estimate(lat, lng, settings.POSITION_NOISE_STD)
                 antenna_name = nearest["name"]
 
-                # pos_x = longitude, pos_y = latitude (matches backend Machine.pos_x/pos_y)
+                # pos_x = longitude, pos_y = latitude
                 for sensor_type, value in [("pos_x", est_lng), ("pos_y", est_lat)]:
                     pos_payload = {
                         "machine_id": machine_id,
