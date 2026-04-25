@@ -7,22 +7,17 @@ class Settings(BaseSettings):
     API_URL: str = "http://localhost:8000"
     API_TOKEN: str = "sim_token_changeme"
     INTERVAL_MS: int = 5000
+
     # Comma-separated machine IDs to simulate; if empty, fetched from API
     MACHINE_IDS: str = ""
 
-    # Quarry bounding box — max ±0.05 degrees from map center (~5.5km)
-    QUARRY_MIN_LAT: float = -26.2541   # center -26.2041 - 0.05
-    QUARRY_MAX_LAT: float = -26.1541   # center -26.2041 + 0.05
-    QUARRY_MIN_LNG: float = 27.9973    # center 28.0473 - 0.05
-    QUARRY_MAX_LNG: float = 28.0973    # center 28.0473 + 0.05
+    # Max deviation from map center in degrees (≈ 5.5km at equator)
+    # Bounding box is computed at runtime: center ± POSITION_RADIUS
+    POSITION_RADIUS: float = 0.05
 
     # Antenna definitions as JSON string: [{"name":"A","lat":...,"lng":...}, ...]
-    # Number of antennas is configurable — add/remove entries here
-    ANTENNAS_JSON: str = (
-        '[{"name":"Antenna A","lat":-26.2035,"lng":28.0460},'
-        '{"name":"Antenna B","lat":-26.2050,"lng":28.0490},'
-        '{"name":"Antenna C","lat":-26.2030,"lng":28.0500}]'
-    )
+    # If empty, antennas are fetched from GET /map-config at startup
+    ANTENNAS_JSON: str = ""
 
     # Gaussian noise std dev in degrees (≈ 2m at equator ≈ 0.000018 degrees)
     POSITION_NOISE_STD: float = 0.000018

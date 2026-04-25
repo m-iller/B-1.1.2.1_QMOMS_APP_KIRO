@@ -3,6 +3,7 @@ import json
 import logging
 import random
 from datetime import datetime, timezone
+from dataclasses import dataclass
 
 import httpx
 
@@ -17,6 +18,27 @@ from simulator.generators import (
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [SIM] %(message)s")
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class QuarryBounds:
+    center_lat: float
+    center_lng: float
+    min_lat: float
+    max_lat: float
+    min_lng: float
+    max_lng: float
+
+    @classmethod
+    def from_center(cls, lat: float, lng: float, radius: float) -> "QuarryBounds":
+        return cls(
+            center_lat=lat,
+            center_lng=lng,
+            min_lat=lat - radius,
+            max_lat=lat + radius,
+            min_lng=lng - radius,
+            max_lng=lng + radius,
+        )
 
 
 async def fetch_machine_ids(client: ApiClient, interval_s: float) -> list[str]:
@@ -43,39 +65,56 @@ async def fetch_machine_ids(client: ApiClient, interval_s: float) -> list[str]:
         await asyncio.sleep(interval_s)
 
 
-async def fetch_map_center(client: ApiClient) -> tuple[float, float]:
+async def fetch_map_config(client: ApiClient, interval_s: float) -> tuple[QuarryBounds, list[dict]]:
     """
-    Fetch map center from GET /map-config.
-    Falls back to bounding box center if not configured or unreachable.
+    Fetch map center and antennas from GET /map-config.
+    Retries until map config is available — no hardcoded fallback.
     """
-    map_cfg = await client.get_map_config()
-    if map_cfg and "center_lat" in map_cfg and "center_lng" in map_cfg:
-        lat = map_cfg["center_lat"]
-        lng = map_cfg["center_lng"]
-        logger.info(f"Map center from API: ({lat:.4f}, {lng:.4f})")
-        return lat, lng
+    while True:
+        map_cfg = await client.get_map_config()
+        if map_cfg and "center_lat" in map_cfg and "center_lng" in map_cfg:
+            lat = map_cfg["center_lat"]
+            lng = map_cfg["center_lng"]
+            bounds = QuarryBounds.from_center(lat, lng, settings.POSITION_RADIUS)
+            logger.info(
+                f"Map center from API: ({lat:.6f}, {lng:.6f}) "
+                f"bounds ±{settings.POSITION_RADIUS}°"
+            )
 
-    # Fallback: midpoint of bounding box
-    lat = (settings.QUARRY_MIN_LAT + settings.QUARRY_MAX_LAT) / 2
-    lng = (settings.QUARRY_MIN_LNG + settings.QUARRY_MAX_LNG) / 2
-    logger.warning(f"Map config not available — using bounding box center: ({lat:.4f}, {lng:.4f})")
-    return lat, lng
+            # Use antennas from map config if ANTENNAS_JSON not set
+            antennas: list[dict] = []
+            if settings.ANTENNAS_JSON.strip():
+                try:
+                    antennas = json.loads(settings.ANTENNAS_JSON)
+                    logger.info(f"Using {len(antennas)} antennas from ANTENNAS_JSON env var")
+                except Exception as e:
+                    logger.error(f"Failed to parse ANTENNAS_JSON: {e}")
+
+            if not antennas and map_cfg.get("antennas"):
+                antennas = [
+                    {"name": a["name"], "lat": a["lat"], "lng": a["lng"]}
+                    for a in map_cfg["antennas"]
+                ]
+                logger.info(f"Using {len(antennas)} antennas from map config API: {[a['name'] for a in antennas]}")
+
+            if not antennas:
+                logger.warning("No antennas found in map config or ANTENNAS_JSON — position telemetry disabled")
+
+            return bounds, antennas
+
+        logger.warning(
+            f"Map config not available from API — retrying in {interval_s}s. "
+            f"Configure map via PUT /map-config or frontend Map View → Configure Map."
+        )
+        await asyncio.sleep(interval_s)
 
 
-def scatter_near(center_lat: float, center_lng: float, radius: float = 0.01) -> tuple[float, float]:
-    """
-    Return a random position within `radius` degrees of center.
-    radius=0.01 ≈ 1.1km — machines start spread near the map center.
-    Max allowed deviation from center is 0.05 degrees.
-    """
-    lat = center_lat + random.uniform(-radius, radius)
-    lng = center_lng + random.uniform(-radius, radius)
-    # Clamp to ±0.05 from center (hard limit)
-    lat = max(center_lat - 0.05, min(center_lat + 0.05, lat))
-    lng = max(center_lng - 0.05, min(center_lng + 0.05, lng))
-    # Also clamp to quarry bounds
-    lat = max(settings.QUARRY_MIN_LAT, min(settings.QUARRY_MAX_LAT, lat))
-    lng = max(settings.QUARRY_MIN_LNG, min(settings.QUARRY_MAX_LNG, lng))
+def scatter_near(bounds: QuarryBounds, init_radius: float = 0.01) -> tuple[float, float]:
+    """Random position within init_radius of center, clamped to bounds."""
+    lat = bounds.center_lat + random.uniform(-init_radius, init_radius)
+    lng = bounds.center_lng + random.uniform(-init_radius, init_radius)
+    lat = max(bounds.min_lat, min(bounds.max_lat, lat))
+    lng = max(bounds.min_lng, min(bounds.max_lng, lng))
     return round(lat, 7), round(lng, 7)
 
 
@@ -83,13 +122,9 @@ async def run_simulation() -> None:
     client = ApiClient()
     interval_s = settings.INTERVAL_MS / 1000
 
-    # Parse antenna definitions
-    try:
-        antennas: list[dict] = json.loads(settings.ANTENNAS_JSON)
-        logger.info(f"Loaded {len(antennas)} antennas: {[a['name'] for a in antennas]}")
-    except Exception as e:
-        logger.error(f"Failed to parse ANTENNAS_JSON: {e}. Using empty antenna list.")
-        antennas = []
+    # Fetch map config from API — blocks until available
+    logger.info("Fetching map configuration from API...")
+    bounds, antennas = await fetch_map_config(client, interval_s)
 
     # Resolve machine IDs — use configured list or fetch all from DB
     if settings.MACHINE_IDS.strip():
@@ -99,23 +134,25 @@ async def run_simulation() -> None:
         logger.info("MACHINE_IDS not set — fetching all machines from DB...")
         machine_ids = await fetch_machine_ids(client, interval_s)
 
-    # Fetch map center from API to initialize positions near it
-    center_lat, center_lng = await fetch_map_center(client)
-
-    # Scatter each machine randomly within ~220m of map center
+    # Scatter each machine within init_radius of map center
     positions: dict[str, tuple[float, float]] = {
-        mid: scatter_near(center_lat, center_lng) for mid in machine_ids
+        mid: scatter_near(bounds) for mid in machine_ids
     }
     logger.info(
         f"Starting simulation for {len(machine_ids)} machines at {interval_s}s intervals. "
-        f"Positions initialized near ({center_lat:.4f}, {center_lng:.4f})"
+        f"Center: ({bounds.center_lat:.6f}, {bounds.center_lng:.6f}), "
+        f"radius: ±{settings.POSITION_RADIUS}°"
     )
 
     while True:
         for machine_id in machine_ids:
-            # Advance true position via random walk
-            lat, lng = positions.get(machine_id, (center_lat, center_lng))
-            lat, lng = update_position(lat, lng, settings)
+            # Advance true position via random walk, clamped to bounds
+            lat, lng = positions.get(machine_id, (bounds.center_lat, bounds.center_lng))
+            new_lat = lat + random.uniform(-0.0002, 0.0002)
+            new_lng = lng + random.uniform(-0.0002, 0.0002)
+            new_lat = max(bounds.min_lat, min(bounds.max_lat, new_lat))
+            new_lng = max(bounds.min_lng, min(bounds.max_lng, new_lng))
+            lat, lng = round(new_lat, 7), round(new_lng, 7)
             positions[machine_id] = (lat, lng)
 
             # --- Standard sensor telemetry ---
@@ -140,7 +177,6 @@ async def run_simulation() -> None:
                 est_lat, est_lng = compute_antenna_estimate(lat, lng, settings.POSITION_NOISE_STD)
                 antenna_name = nearest["name"]
 
-                # pos_x = longitude, pos_y = latitude
                 for sensor_type, value in [("pos_x", est_lng), ("pos_y", est_lat)]:
                     pos_payload = {
                         "machine_id": machine_id,
@@ -160,8 +196,6 @@ async def run_simulation() -> None:
                             f"Error for machine={machine_id} sensor={sensor_type} "
                             f"antenna={antenna_name}: {e}"
                         )
-            else:
-                logger.warning("No antennas configured — skipping position telemetry")
 
         await asyncio.sleep(interval_s)
 

@@ -42,9 +42,10 @@ def update_position(lat: float, lng: float, settings) -> tuple[float, float]:
     step = 0.0002  # ~22m per step at equator
     new_lat = lat + random.uniform(-step, step)
     new_lng = lng + random.uniform(-step, step)
-    # Clamp to quarry bounds
-    new_lat = max(settings.QUARRY_MIN_LAT, min(settings.QUARRY_MAX_LAT, new_lat))
-    new_lng = max(settings.QUARRY_MIN_LNG, min(settings.QUARRY_MAX_LNG, new_lng))
+    # Clamp to quarry bounds if settings has them, otherwise unclamped
+    if hasattr(settings, 'QUARRY_MIN_LAT'):
+        new_lat = max(settings.QUARRY_MIN_LAT, min(settings.QUARRY_MAX_LAT, new_lat))
+        new_lng = max(settings.QUARRY_MIN_LNG, min(settings.QUARRY_MAX_LNG, new_lng))
     return round(new_lat, 7), round(new_lng, 7)
 
 
