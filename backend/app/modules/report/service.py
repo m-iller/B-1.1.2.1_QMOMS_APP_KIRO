@@ -1,11 +1,7 @@
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import NotFoundException
 from app.modules.event.repository import get_shift_by_id
-from app.modules.machine.models import Machine, MachineState
-from app.modules.task.models import Task
-from app.modules.telemetry.models import Anomaly
 from app.modules.report import repository
 from app.modules.report.schemas import (
     AnomalyCount,
@@ -22,38 +18,19 @@ async def generate(payload: GenerateReportRequest, actor, db: AsyncSession) -> R
     if shift is None:
         raise NotFoundException("Shift not found")
 
-    # All machines
-    machines_result = await db.execute(select(Machine))
-    machines = list(machines_result.scalars().all())
+    machines = await repository.get_all_machines(db)
+    machine_name_map = {m.id: m.name for m in machines}
 
-    # Machine utilization per machine within shift time range
     machine_utilization: list[MachineUtilization] = []
     for machine in machines:
-        # Base query: machine_states for this machine within shift time range
-        base_q = select(func.count()).where(MachineState.machine_id == machine.id)
-        if shift.start_time:
-            base_q = base_q.where(MachineState.created_at >= shift.start_time)
-        if shift.end_time:
-            base_q = base_q.where(MachineState.created_at <= shift.end_time)
-
-        total_result = await db.execute(base_q)
-        total = total_result.scalar() or 0
-
-        if total > 0:
-            operating_q = (
-                select(func.count())
-                .where(MachineState.machine_id == machine.id)
-                .where(MachineState.source == "telemetry")
-                .where(MachineState.state == "operating")
+        total_states = await repository.count_machine_states_in_range(
+            machine.id, shift.start_time, shift.end_time, db
+        )
+        if total_states > 0:
+            operating_states = await repository.count_operating_states_in_range(
+                machine.id, shift.start_time, shift.end_time, db
             )
-            if shift.start_time:
-                operating_q = operating_q.where(MachineState.created_at >= shift.start_time)
-            if shift.end_time:
-                operating_q = operating_q.where(MachineState.created_at <= shift.end_time)
-
-            operating_result = await db.execute(operating_q)
-            operating = operating_result.scalar() or 0
-            utilization_percent = (operating / total) * 100
+            utilization_percent = (operating_states / total_states) * 100
         else:
             utilization_percent = 0.0
 
@@ -65,34 +42,21 @@ async def generate(payload: GenerateReportRequest, actor, db: AsyncSession) -> R
             )
         )
 
-    # Task counts by state
-    async def _count_tasks(state: str) -> int:
-        result = await db.execute(
-            select(func.count()).select_from(Task).where(Task.state == state)
-        )
-        return result.scalar() or 0
-
     task_counts = TaskCounts(
-        pending=await _count_tasks("pending"),
-        active=await _count_tasks("active"),
-        completed=await _count_tasks("completed"),
-        validated=await _count_tasks("validated"),
+        pending=await repository.count_tasks_by_state("pending", db),
+        active=await repository.count_tasks_by_state("active", db),
+        completed=await repository.count_tasks_by_state("completed", db),
+        validated=await repository.count_tasks_by_state("validated", db),
     )
 
-    # Anomaly counts per machine
-    anomaly_rows = await db.execute(
-        select(Anomaly.machine_id, func.count().label("cnt")).group_by(Anomaly.machine_id)
-    )
-    anomaly_map = {row.machine_id: row.cnt for row in anomaly_rows}
-
-    machine_name_map = {m.id: m.name for m in machines}
+    anomaly_map = await repository.get_anomaly_counts_by_machine(db)
     anomaly_counts: list[AnomalyCount] = [
         AnomalyCount(
-            machine_id=mid,
-            machine_name=machine_name_map.get(mid, mid),
-            count=cnt,
+            machine_id=machine_id,
+            machine_name=machine_name_map.get(machine_id, machine_id),
+            count=count,
         )
-        for mid, cnt in anomaly_map.items()
+        for machine_id, count in anomaly_map.items()
     ]
 
     report_data = ReportData(
@@ -101,10 +65,9 @@ async def generate(payload: GenerateReportRequest, actor, db: AsyncSession) -> R
         anomaly_counts=anomaly_counts,
     )
 
-    actor_id = getattr(actor, "id", None)
     report = await repository.insert_report(
         shift_id=payload.shift_id,
-        generated_by=actor_id,
+        generated_by=getattr(actor, "id", None),
         data=report_data.model_dump(),
         db=db,
     )

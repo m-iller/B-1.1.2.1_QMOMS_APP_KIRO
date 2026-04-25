@@ -1,6 +1,9 @@
+import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import NotFoundException
+from app.common.roles import OPERATIONAL_NOTIFY_ROLES
 from app.modules.machine import repository
 from app.modules.machine.conflict_service import detect_and_handle_conflict
 from app.modules.machine.schemas import (
@@ -9,6 +12,11 @@ from app.modules.machine.schemas import (
     MachineResponse,
     UpdateMachineStateRequest,
 )
+from app.modules.notification.service import NotificationService
+
+logger = logging.getLogger(__name__)
+
+_notification_service = NotificationService()
 
 
 async def find_all(db: AsyncSession) -> list[MachineResponse]:
@@ -49,8 +57,8 @@ async def create(
                 payload={"state": payload.initial_state, "source": source},
                 db=db,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Event emit failed for MACHINE_STATE_CHANGED machine=%s: %s", machine.id, exc)
 
     return MachineResponse.model_validate(machine)
 
@@ -67,8 +75,9 @@ async def update_state(
     if machine is None:
         raise NotFoundException(f"Machine {machine_id} not found")
 
-    old_state = machine.current_state
+    previous_state = machine.current_state
     source = "dispatcher" if actor.role == "dispatcher" else "operator"
+
     await repository.insert_machine_state(
         machine_id=machine_id,
         state=payload.state,
@@ -80,17 +89,16 @@ async def update_state(
     await detect_and_handle_conflict(machine_id, actor.role, db, event_service, notification_service)
 
     try:
-        from app.modules.notification.service import NotificationService
-        await NotificationService().broadcast_to_roles(
-            roles=["dispatcher", "admin", "dev"],
+        await _notification_service.broadcast_to_roles(
+            roles=list(OPERATIONAL_NOTIFY_ROLES),
             type_="system",
             name=f"Machine State Changed: {machine.name}",
-            desc=f"State: {old_state} → {payload.state} | By: {actor.role}",
+            desc=f"State: {previous_state} → {payload.state} | By: {actor.role}",
             bigdesc=f"Machine ID: {machine_id}\nType: {machine.type}",
             db=db,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Notification failed for machine_state_changed machine=%s: %s", machine_id, exc)
 
     updated = await repository.get_machine_by_id(machine_id, db)
     return MachineResponse.model_validate(updated)
@@ -129,8 +137,8 @@ async def resolve_conflict(
                 payload={"conflict_resolved": True},
                 db=db,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Event emit failed for conflict resolution machine=%s: %s", machine_id, exc)
 
     updated = await repository.get_machine_by_id(machine_id, db)
     return MachineResponse.model_validate(updated)

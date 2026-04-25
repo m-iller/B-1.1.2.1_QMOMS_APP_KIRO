@@ -1,20 +1,29 @@
+import logging
 from datetime import datetime, timezone
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import ForbiddenException, NotFoundException
+from app.common.roles import OPERATIONAL_NOTIFY_ROLES
 from app.modules.event.repository import get_active_shift
 from app.modules.notification import repository
 from app.modules.notification.schemas import NotificationResponse
 
-# Roles that receive task notifications
-TASK_NOTIFY_ROLES = ["dispatcher", "admin", "dev"]
+logger = logging.getLogger(__name__)
 
 
-def _build_payload(name: str, desc: str, bigdesc: str = "", date: str = "", timestamp: str = "") -> dict:
+def _build_payload(
+    name: str,
+    desc: str,
+    bigdesc: str = "",
+    date: str = "",
+    timestamp: str = "",
+) -> dict:
     if not timestamp:
         timestamp = datetime.now(timezone.utc).isoformat()
     if not date:
-        date = timestamp[:10]
+        # Extract date portion from ISO timestamp reliably
+        date = datetime.fromisoformat(timestamp).date().isoformat()
     return {"name": name, "desc": desc, "bigdesc": bigdesc, "date": date, "timestamp": timestamp}
 
 
@@ -56,7 +65,7 @@ class NotificationService:
         bigdesc: str,
         db: AsyncSession,
     ) -> None:
-        """Send notification to all users with given roles."""
+        """Send notification to all users with the given roles."""
         from app.modules.auth.repository import get_users_by_roles
         users = await get_users_by_roles(roles, db)
         payload = _build_payload(name, desc, bigdesc)
@@ -67,7 +76,7 @@ class NotificationService:
 
     async def notify_task_created(self, task, db: AsyncSession) -> None:
         await self.broadcast_to_roles(
-            roles=TASK_NOTIFY_ROLES,
+            roles=list(OPERATIONAL_NOTIFY_ROLES),
             type_="system",
             name=f"Task Created: {task.title}",
             desc=f"Priority: {task.priority} | Machine: {task.machine_id}",
@@ -75,12 +84,12 @@ class NotificationService:
             db=db,
         )
 
-    async def notify_task_state_changed(self, task, old_state: str, db: AsyncSession) -> None:
+    async def notify_task_state_changed(self, task, previous_state: str, db: AsyncSession) -> None:
         await self.broadcast_to_roles(
-            roles=TASK_NOTIFY_ROLES,
+            roles=list(OPERATIONAL_NOTIFY_ROLES),
             type_="system",
             name=f"Task Updated: {task.title}",
-            desc=f"State: {old_state} → {task.state} | Priority: {task.priority}",
+            desc=f"State: {previous_state} → {task.state} | Priority: {task.priority}",
             bigdesc=task.description or "",
             db=db,
         )

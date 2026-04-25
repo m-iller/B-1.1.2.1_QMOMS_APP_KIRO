@@ -1,6 +1,10 @@
+import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.machine import repository
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_effective_state(
@@ -8,6 +12,11 @@ def resolve_effective_state(
     telemetry_state: str | None,
     operator_state: str | None,
 ) -> tuple[str, bool]:
+    """
+    Apply state priority: dispatcher > telemetry > operator.
+    Returns (effective_state, conflict_active).
+    A conflict exists when dispatcher and operator states differ.
+    """
     conflict_active = (
         dispatcher_state is not None
         and operator_state is not None
@@ -24,6 +33,10 @@ async def detect_and_handle_conflict(
     event_service,
     notification_service,
 ) -> bool:
+    """
+    Detect state conflicts for a machine and handle accordingly.
+    Returns True if a conflict was detected.
+    """
     dispatcher_ms = await repository.get_latest_machine_state_by_source(machine_id, "dispatcher", db)
     operator_ms = await repository.get_latest_machine_state_by_source(machine_id, "operator", db)
     telemetry_ms = await repository.get_latest_machine_state_by_source(machine_id, "telemetry", db)
@@ -51,8 +64,8 @@ async def detect_and_handle_conflict(
                     },
                     db=db,
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Event emit failed for CONFLICT_DETECTED machine=%s: %s", machine_id, exc)
 
         if notification_service is not None:
             try:
@@ -60,7 +73,7 @@ async def detect_and_handle_conflict(
                 if machine and machine.assigned_dispatcher_id:
                     await notification_service.create(
                         user_id=machine.assigned_dispatcher_id,
-                        type_="CONFLICT_DETECTED",
+                        type_="conflict",
                         payload={
                             "machine_id": machine_id,
                             "dispatcher_state": dispatcher_state,
@@ -68,8 +81,8 @@ async def detect_and_handle_conflict(
                         },
                         db=db,
                     )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Notification failed for conflict machine=%s: %s", machine_id, exc)
     else:
         await repository.update_machine_state(machine_id, effective_state, db)
         await repository.update_machine_conflict(machine_id, False, db)

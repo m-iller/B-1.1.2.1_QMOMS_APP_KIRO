@@ -1,30 +1,40 @@
+"""
+Telemetry data generators for the quarry simulator.
+All sensor ranges are defined as named constants — never inline magic numbers.
+"""
 import math
 import random
 
 SENSOR_TYPES = ["engine_temp", "fuel_level", "speed", "payload_weight"]
 
+# Sensor value ranges (min, max) for random generation
+# Ranges are intentionally wide enough to occasionally exceed anomaly thresholds
+ENGINE_TEMP_RANGE = (60.0, 130.0)   # threshold: 110°C
+FUEL_LEVEL_RANGE = (0.0, 100.0)     # threshold: <10%
+SPEED_RANGE = (0.0, 90.0)           # threshold: 80 km/h
+PAYLOAD_WEIGHT_RANGE = (0.0, 70.0)  # threshold: 60t
+
+# Position random walk step size in degrees (~22m at equator)
+POSITION_STEP_DEGREES = 0.0002
+
 
 def generate_engine_temp() -> dict:
-    # Occasionally spike above 110°C threshold to trigger anomalies
-    value = random.uniform(60, 130)
+    value = random.uniform(*ENGINE_TEMP_RANGE)
     return {"value": round(value, 2), "unit": "celsius"}
 
 
 def generate_fuel_level() -> dict:
-    # Occasionally dip below 10% threshold
-    value = random.uniform(0, 100)
+    value = random.uniform(*FUEL_LEVEL_RANGE)
     return {"value": round(value, 2), "unit": "percent"}
 
 
 def generate_speed() -> dict:
-    # Occasionally exceed 80 kmh threshold
-    value = random.uniform(0, 90)
+    value = random.uniform(*SPEED_RANGE)
     return {"value": round(value, 2), "unit": "kmh"}
 
 
 def generate_payload_weight() -> dict:
-    # Occasionally exceed 60t threshold
-    value = random.uniform(0, 70)
+    value = random.uniform(*PAYLOAD_WEIGHT_RANGE)
     return {"value": round(value, 2), "unit": "tonnes"}
 
 
@@ -36,28 +46,15 @@ GENERATORS = {
 }
 
 
-def update_position(lat: float, lng: float, settings) -> tuple[float, float]:
-    """Random walk within the configured quarry bounding box (lat/lng degrees).
-    Step size ~22m. Position clamped to quarry bounds."""
-    step = 0.0002  # ~22m per step at equator
-    new_lat = lat + random.uniform(-step, step)
-    new_lng = lng + random.uniform(-step, step)
-    # Clamp to quarry bounds if settings has them, otherwise unclamped
-    if hasattr(settings, 'QUARRY_MIN_LAT'):
-        new_lat = max(settings.QUARRY_MIN_LAT, min(settings.QUARRY_MAX_LAT, new_lat))
-        new_lng = max(settings.QUARRY_MIN_LNG, min(settings.QUARRY_MAX_LNG, new_lng))
-    return round(new_lat, 7), round(new_lng, 7)
-
-
-def compute_antenna_estimate(lat: float, lng: float, sigma: float) -> tuple[float, float]:
+def compute_antenna_estimate(lat: float, lng: float, noise_std_degrees: float) -> tuple[float, float]:
     """Add Gaussian noise to a position to simulate antenna-based measurement error."""
-    est_lat = lat + random.gauss(0, sigma)
-    est_lng = lng + random.gauss(0, sigma)
-    return round(est_lat, 7), round(est_lng, 7)
+    estimated_lat = lat + random.gauss(0, noise_std_degrees)
+    estimated_lng = lng + random.gauss(0, noise_std_degrees)
+    return round(estimated_lat, 7), round(estimated_lng, 7)
 
 
 def find_nearest_antenna(lat: float, lng: float, antennas: list[dict]) -> dict:
     """Return the antenna closest to (lat, lng) using Euclidean distance."""
-    def dist(a: dict) -> float:
-        return math.sqrt((a["lat"] - lat) ** 2 + (a["lng"] - lng) ** 2)
-    return min(antennas, key=dist)
+    def euclidean_distance(antenna: dict) -> float:
+        return math.sqrt((antenna["lat"] - lat) ** 2 + (antenna["lng"] - lng) ** 2)
+    return min(antennas, key=euclidean_distance)

@@ -25,22 +25,34 @@ logger = logging.getLogger(__name__)
 
 MACHINE_STATES = ["idle", "operating", "maintenance", "breakdown"]
 
+# Loop timing multipliers — relative to base telemetry interval
+STATE_LOOP_INTERVAL_MULTIPLIER = 3   # state changes 3x less frequent than telemetry
+TASK_LOOP_INTERVAL_MULTIPLIER = 2    # task events 2x less frequent than telemetry
+
+# Task state progression: pending → active → completed
+TASK_NEXT_STATE: dict[str, str] = {
+    "pending": "active",
+    "active": "completed",
+}
+
+# Weighted state transition table for machine state simulation
+STATE_TRANSITION_WEIGHTS: dict[str, list[tuple[str, float]]] = {
+    "idle":        [("operating", 0.6), ("maintenance", 0.3), ("idle", 0.1)],
+    "operating":   [("idle", 0.3), ("operating", 0.5), ("maintenance", 0.15), ("breakdown", 0.05)],
+    "maintenance": [("idle", 0.5), ("operating", 0.4), ("maintenance", 0.1)],
+    "breakdown":   [("maintenance", 0.7), ("idle", 0.3)],
+}
+
 _TASKS_FILE = Path(__file__).parent / "tasks.json"
 try:
     TASK_TEMPLATES: list[dict] = json.loads(_TASKS_FILE.read_text())
     logger.info(f"Loaded {len(TASK_TEMPLATES)} task templates from {_TASKS_FILE.name}")
-except Exception as e:
-    logger.warning(f"Could not load tasks.json ({e}), using fallback task list")
+except Exception as exc:
+    logger.warning(f"Could not load tasks.json ({exc}), using fallback task list")
     TASK_TEMPLATES = [
         {"title": "Perform safety check", "description": "Pre-shift safety inspection.", "priority": "high"},
         {"title": "Refuel machine", "description": "Top up fuel tank.", "priority": "medium"},
     ]
-
-# Task state progression: pending → active → completed → validated
-TASK_NEXT_STATE = {
-    "pending": "active",
-    "active": "completed",
-}
 
 
 # ---------------------------------------------------------------------------
@@ -187,21 +199,14 @@ async def simulate_machine_states(
     machine_states: dict[str, str] = {mid: "idle" for mid in machine_ids}
 
     while True:
-        await asyncio.sleep(interval_s * 3)  # state changes less frequent than telemetry
+        await asyncio.sleep(interval_s * STATE_LOOP_INTERVAL_MULTIPLIER)
 
         for machine_id in machine_ids:
             if random.random() > settings.STATE_CHANGE_PROB:
                 continue
 
             current = machine_states.get(machine_id, "idle")
-            # Weighted transitions: operating most common, breakdown rare
-            weights = {
-                "idle": [("operating", 0.6), ("maintenance", 0.3), ("idle", 0.1)],
-                "operating": [("idle", 0.3), ("operating", 0.5), ("maintenance", 0.15), ("breakdown", 0.05)],
-                "maintenance": [("idle", 0.5), ("operating", 0.4), ("maintenance", 0.1)],
-                "breakdown": [("maintenance", 0.7), ("idle", 0.3)],
-            }
-            choices = weights.get(current, [("idle", 1.0)])
+            choices = STATE_TRANSITION_WEIGHTS.get(current, [("idle", 1.0)])
             states, probs = zip(*choices)
             new_state = random.choices(states, weights=probs, k=1)[0]
 
@@ -231,7 +236,7 @@ async def simulate_tasks(
     machine_tasks: dict[str, list[str]] = {mid: [] for mid in machine_ids}
 
     while True:
-        await asyncio.sleep(interval_s * 2)  # task events less frequent than telemetry
+        await asyncio.sleep(interval_s * TASK_LOOP_INTERVAL_MULTIPLIER)
 
         for machine_id in machine_ids:
             active_tasks = machine_tasks[machine_id]

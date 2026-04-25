@@ -1,13 +1,22 @@
+import logging
 from datetime import datetime, timezone
+
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import ForbiddenException, NotFoundException
+from app.common.roles import TASK_ACTIVATION_ROLES, TASK_VALIDATOR_ROLES
+from app.modules.notification.service import NotificationService
 from app.modules.task import repository
 from app.modules.task.schemas import CreateTaskRequest, TaskResponse, UpdateTaskRequest
 
+logger = logging.getLogger(__name__)
+
+_notification_service = NotificationService()
+
 
 def _compute_overdue(task) -> bool:
+    """Return True if task deadline has passed and task is not completed/validated."""
     if task.state in ("completed", "validated"):
         return False
     try:
@@ -17,7 +26,8 @@ def _compute_overdue(task) -> bool:
         if deadline.tzinfo is None:
             deadline = deadline.replace(tzinfo=timezone.utc)
         return deadline < datetime.now(timezone.utc)
-    except Exception:
+    except (ValueError, TypeError) as exc:
+        logger.warning("Failed to compute overdue for task %s: %s", getattr(task, "id", "?"), exc)
         return False
 
 
@@ -60,6 +70,7 @@ async def create(payload: CreateTaskRequest, actor, db: AsyncSession, event_serv
         created_by=actor.id,
         db=db,
     )
+
     if event_service:
         try:
             await event_service.emit(
@@ -68,13 +79,14 @@ async def create(payload: CreateTaskRequest, actor, db: AsyncSession, event_serv
                 payload={"task_id": str(task.id)},
                 db=db,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Event emit failed for TASK_CREATED task=%s: %s", task.id, exc)
+
     try:
-        from app.modules.notification.service import NotificationService
-        await NotificationService().notify_task_created(task, db)
-    except Exception:
-        pass
+        await _notification_service.notify_task_created(task, db)
+    except Exception as exc:
+        logger.warning("Notification failed for task_created task=%s: %s", task.id, exc)
+
     return _to_response(task)
 
 
@@ -93,15 +105,14 @@ async def update_state(
     if new_state is None:
         return _to_response(task)
 
-    current_state = task.state
+    previous_state = task.state
 
-    # Operator requesting activation → set pending_activation flag, don't change state
+    # Operator requesting activation → set pending_activation flag, state unchanged
     if new_state == "active" and actor.role == "operator":
         task = await repository.set_pending_activation(task_id, True, db)
         return _to_response(task)
 
-    # Only dispatcher (or dev) can validate
-    if new_state == "validated" and actor.role not in ("dispatcher", "dev"):
+    if new_state == "validated" and actor.role not in TASK_VALIDATOR_ROLES:
         raise ForbiddenException("Only dispatchers can validate tasks")
 
     task = await repository.update_task_state(task_id, new_state, db)
@@ -114,20 +125,19 @@ async def update_state(
                 payload={"task_id": task_id},
                 db=db,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Event emit failed for TASK_COMPLETED task=%s: %s", task_id, exc)
 
     try:
-        from app.modules.notification.service import NotificationService
-        await NotificationService().notify_task_state_changed(task, current_state, db)
-    except Exception:
-        pass
+        await _notification_service.notify_task_state_changed(task, previous_state, db)
+    except Exception as exc:
+        logger.warning("Notification failed for task_state_changed task=%s: %s", task_id, exc)
 
     return _to_response(task)
 
 
 async def confirm_activation(task_id: str, actor, db: AsyncSession) -> TaskResponse:
-    if actor.role not in ("dispatcher", "dev"):
+    if actor.role not in TASK_ACTIVATION_ROLES:
         raise ForbiddenException("Only dispatchers can confirm task activation")
     task = await repository.get_task_by_id(task_id, db)
     if task is None:
