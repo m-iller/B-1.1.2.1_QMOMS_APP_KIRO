@@ -34,7 +34,10 @@ async def get_current_user(
 
 def require_roles(roles: list[str]):
     async def _check(current_user: Any = Depends(get_current_user)) -> Any:
-        if not hasattr(current_user, "role") or current_user.role not in roles:
+        # 'dev' role has all permissions — bypasses every role check
+        if not hasattr(current_user, "role"):
             raise HTTPException(status_code=403, detail="Insufficient role")
-        return current_user
+        if current_user.role == "dev" or current_user.role in roles:
+            return current_user
+        raise HTTPException(status_code=403, detail="Insufficient role")
     return _check

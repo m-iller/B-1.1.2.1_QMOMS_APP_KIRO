@@ -93,8 +93,8 @@ async def update_state(
         task = await repository.set_pending_activation(task_id, True, db)
         return _to_response(task)
 
-    # Only dispatcher can validate
-    if new_state == "validated" and actor.role != "dispatcher":
+    # Only dispatcher (or dev) can validate
+    if new_state == "validated" and actor.role not in ("dispatcher", "dev"):
         raise ForbiddenException("Only dispatchers can validate tasks")
 
     task = await repository.update_task_state(task_id, new_state, db)
@@ -114,7 +114,7 @@ async def update_state(
 
 
 async def confirm_activation(task_id: str, actor, db: AsyncSession) -> TaskResponse:
-    if actor.role != "dispatcher":
+    if actor.role not in ("dispatcher", "dev"):
         raise ForbiddenException("Only dispatchers can confirm task activation")
     task = await repository.get_task_by_id(task_id, db)
     if task is None:

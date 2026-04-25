@@ -20,7 +20,7 @@ async def seed() -> None:
         # ------------------------------------------------------------------
         # Users — one per role
         # ------------------------------------------------------------------
-        roles = ["operator", "dispatcher", "manager", "admin", "mechanic", "IT", "owner"]
+        roles = ["operator", "dispatcher", "manager", "admin", "mechanic", "IT", "owner", "dev"]
         user_ids: dict[str, str] = {}
 
         for role in roles:
