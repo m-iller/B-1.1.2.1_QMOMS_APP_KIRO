@@ -8,6 +8,7 @@ class ApiClient:
             base_url=settings.API_URL,
             headers={"Authorization": f"Bearer {settings.API_TOKEN}"},
             timeout=10.0,
+            trust_env=False,  # bypass system proxy (corporate VPN/proxy)
         )
 
     async def post_telemetry(self, payload: dict) -> None:
