@@ -1,4 +1,0 @@
-# file: A:\WORK DIRECTORY\Projects\B-1.0.2_QMOMS\B-1.1.2.1_QMOMS_APP_KIRO\backend\app\modules\telemetry\thresholds.py
-# hypothesis_version: 6.151.14
-
-[5.0, 10.0, 60.0, 80.0, 110.0, 'above', 'below', 'breakdown', 'engine_temp', 'fuel_level', 'idle', 'maintenance', 'operating', 'payload_weight', 'speed']

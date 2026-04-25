@@ -1,41 +1,123 @@
-# Environment files
+# =============================================================================
+# Environment & Secrets
+# =============================================================================
 .env
 .env.local
 .env.*.local
+*.env
 
-# Python virtual environments
+# =============================================================================
+# Python
+# =============================================================================
+# Virtual environments
 .venv/
 venv/
 env/
+ENV/
 
-# Python cache
+# Bytecode
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 *.pyd
+
+# Distribution / packaging
 *.egg-info/
+*.egg
 dist/
 build/
+.eggs/
+MANIFEST
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
 .pytest_cache/
 .hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+nosetests.xml
 
+# mypy / pyright / ruff
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.ruff_cache/
+
+# =============================================================================
 # Node / Frontend
+# =============================================================================
 node_modules/
+.npm/
+.yarn/
+.pnp.*
+
+# Build output
 frontend/dist/
+frontend/build/
 frontend/.cache/
+frontend/.vite/
 
-# Database data
+# TypeScript
+*.tsbuildinfo
+
+# Vitest / Jest
+coverage/
+
+# =============================================================================
+# Database
+# =============================================================================
 pgdata/
+*.sqlite
+*.sqlite3
+*.db
 
-# IDE
+# =============================================================================
+# Docker
+# =============================================================================
+# Keep Dockerfiles tracked; ignore local override files
+docker-compose.override.yml
+
+# =============================================================================
+# IDE & Editors
+# =============================================================================
 .vscode/
 .idea/
 *.swp
 *.swo
+*.swn
+*~
+.project
+.classpath
+.settings/
 
+# =============================================================================
 # OS
+# =============================================================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
 
+# =============================================================================
+# Logs & Temp
+# =============================================================================
+*.log
+logs/
+tmp/
+temp/
+
+# =============================================================================
 # Kiro
+# =============================================================================
 .kiro/
