@@ -120,6 +120,12 @@ try:
 except ImportError:
     pass
 
+try:
+    from app.modules.dev.router import router as dev_router
+    app.include_router(dev_router, tags=["DELETE_BEFORE_PROD"])
+except ImportError:
+    pass
+
 
 # ---------------------------------------------------------------------------
 # Health check

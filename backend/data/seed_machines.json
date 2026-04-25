@@ -1,0 +1,10 @@
+[
+  { "name": "EX-01 Excavator Alpha",  "type": "excavator"  },
+  { "name": "EX-02 Excavator Bravo",  "type": "excavator"  },
+  { "name": "HT-01 Haul Truck Alpha", "type": "haul_truck" },
+  { "name": "HT-02 Haul Truck Bravo", "type": "haul_truck" },
+  { "name": "HT-03 Haul Truck Charlie","type": "haul_truck" },
+  { "name": "DR-01 Drill Rig Alpha",  "type": "drill"      },
+  { "name": "DZ-01 Dozer Alpha",      "type": "dozer"      },
+  { "name": "GR-01 Grader Alpha",     "type": "grader"     }
+]
