@@ -147,3 +147,10 @@ async def confirm_activation(task_id: str, actor, db: AsyncSession) -> TaskRespo
     task = await repository.set_pending_activation(task_id, False, db)
     task = await repository.update_task_state(task_id, "active", db)
     return _to_response(task)
+
+
+async def delete(task_id: str, db: AsyncSession) -> None:
+    task = await repository.get_task_by_id(task_id, db)
+    if task is None:
+        raise NotFoundException(f"Task {task_id} not found")
+    await repository.delete_task(task_id, db)

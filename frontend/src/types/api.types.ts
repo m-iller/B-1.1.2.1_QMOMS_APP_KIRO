@@ -97,6 +97,17 @@ export interface Notification {
   created_at: string
 }
 
+export interface Conflict {
+  id: string
+  machine_id: string
+  dispatcher_state: string
+  operator_state: string
+  resolved: boolean
+  resolved_by_user_id: string | null
+  resolved_at: string | null
+  created_at: string
+}
+
 // Map module types
 export interface AntennaDefinition {
   name: string

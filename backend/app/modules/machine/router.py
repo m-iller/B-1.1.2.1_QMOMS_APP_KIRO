@@ -6,6 +6,7 @@ from app.modules.machine import service
 from app.modules.machine.schemas import (
     AssignDispatcherRequest,
     CreateMachineRequest,
+    ConflictResponse,
     MachineResponse,
     UpdateMachineStateRequest,
 )
@@ -57,7 +58,7 @@ async def update_machine_state(
     machine_id: str,
     payload: UpdateMachineStateRequest,
     db: AsyncSession = Depends(get_db),
-    actor=Depends(require_roles(["dispatcher", "operator"])),
+    actor=Depends(require_roles(["dispatcher", "operator", "dev"])),
 ):
     return await service.update_state(machine_id, payload, actor, db, _event_service, _notification_service)
 
@@ -72,11 +73,34 @@ async def assign_dispatcher(
     await service.assign_dispatcher(machine_id, payload, db)
 
 
+@router.get("/{machine_id}/conflicts", response_model=list[ConflictResponse])
+async def list_machine_conflicts(
+    machine_id: str,
+    db: AsyncSession = Depends(get_db),
+    _actor=Depends(get_current_user),
+):
+    from app.modules.machine.repository import get_unresolved_conflicts
+    conflicts = await get_unresolved_conflicts(machine_id, db)
+    return [
+        ConflictResponse(
+            id=c.id,
+            machine_id=c.machine_id,
+            dispatcher_state=c.dispatcher_state,
+            operator_state=c.operator_state,
+            resolved=c.resolved,
+            resolved_by_user_id=c.resolved_by_user_id,
+            resolved_at=c.resolved_at,
+            created_at=c.created_at,
+        )
+        for c in conflicts
+    ]
+
+
 @router.post("/{machine_id}/conflicts/{conflict_id}/resolve", response_model=MachineResponse)
 async def resolve_conflict(
     machine_id: str,
     conflict_id: str,
     db: AsyncSession = Depends(get_db),
-    actor=Depends(require_roles(["dispatcher"])),
+    actor=Depends(require_roles(["dispatcher", "dev"])),
 ):
     return await service.resolve_conflict(machine_id, conflict_id, actor, db, _event_service)

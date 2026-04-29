@@ -1,4 +1,5 @@
-from sqlalchemy import Boolean, Float, ForeignKey, text
+from datetime import datetime
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -89,7 +90,7 @@ class Conflict(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    resolved_at: Mapped[str | None] = mapped_column(nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[str] = mapped_column(
         nullable=False, server_default=text("NOW()")
     )

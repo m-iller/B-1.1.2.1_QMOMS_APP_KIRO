@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
+from app.common.roles import DISPATCHER_ROLES
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_user, get_db, require_roles
 from app.modules.task import service, haul_cycle_service
@@ -53,6 +54,15 @@ async def confirm_activation(
     actor=Depends(require_roles(["dispatcher"])),
 ):
     return await service.confirm_activation(task_id, actor, db)
+
+
+@router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_task(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    _actor=Depends(require_roles(["dispatcher", "admin", "dev"])),
+):
+    await service.delete(task_id, db)
 
 @router.get("/haul-cycles", response_model=list[HaulCycleResponse])
 async def list_haul_cycles(

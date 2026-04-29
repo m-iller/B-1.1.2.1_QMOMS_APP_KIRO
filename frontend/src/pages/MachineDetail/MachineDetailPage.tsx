@@ -5,28 +5,41 @@ import { getLatestTelemetry } from '../../api/telemetry'
 import { getTasks } from '../../api/tasks'
 import { TelemetrySummary } from './TelemetrySummary'
 import { TaskList } from './TaskList'
+import { MachineStateControl } from './MachineStateControl'
+import { ConflictPanel } from './ConflictPanel'
 import { ConflictBadge } from '../../components/ConflictBadge'
 import { ErrorBanner } from '../../components/ErrorBanner'
+import { getMachineConflicts } from '../../api/machines'
 
 export function MachineDetailPage() {
   const { id } = useParams<{ id: string }>()
 
   // Pass id as dep so polling restarts immediately when navigating between machines
-  const { data: machine, error: machineError } = usePolling(
+  const { data: machine, error: machineError, refresh: refreshMachine } = usePolling(
     () => getMachine(id!),
     5000,
     { deps: [id] }
   )
   const { data: telemetry } = usePolling(
     () => getLatestTelemetry(id!),
-    5000,   // 5s — telemetry updates frequently
+    5000,
     { deps: [id] }
   )
-  const { data: tasks } = usePolling(
+  const { data: tasks, refresh: refreshTasks } = usePolling(
     () => getTasks({ machine_id: id }),
     7000,
     { deps: [id] }
   )
+  const { data: conflicts, refresh: refreshConflicts } = usePolling(
+    () => getMachineConflicts(id!),
+    5000,
+    { deps: [id] }
+  )
+
+  const handleConflictResolved = () => {
+    refreshMachine()
+    refreshConflicts()
+  }
 
   if (!machine) return <div style={{ padding: 24, color: '#6b7280' }}>Loading...</div>
 
@@ -44,6 +57,13 @@ export function MachineDetailPage() {
         </span>
       </div>
       <ErrorBanner error={machineError} />
+      {conflicts && conflicts.length > 0 && (
+        <ConflictPanel
+          machineId={machine.id}
+          conflicts={conflicts}
+          onResolved={handleConflictResolved}
+        />
+      )}
       <p><strong>State:</strong> {machine.current_state}</p>
       <p><strong>Type:</strong> {machine.type}</p>
       {machine.current_zone_id && <p><strong>Zone:</strong> {machine.current_zone_id}</p>}
@@ -56,9 +76,11 @@ export function MachineDetailPage() {
         </p>
       )}
       <hr />
+      <MachineStateControl machineId={machine.id} currentState={machine.current_state} onRefresh={refreshMachine} />
+      <hr />
       <TelemetrySummary records={telemetry ?? []} />
       <hr />
-      <TaskList tasks={tasks ?? []} />
+      <TaskList tasks={tasks ?? []} onRefresh={refreshTasks} />
     </div>
   )
 }

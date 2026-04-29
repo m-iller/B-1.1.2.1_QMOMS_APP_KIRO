@@ -40,3 +40,9 @@ async def set_pending_activation(task_id: str, value: bool, db: AsyncSession) ->
     await db.commit()
     await db.refresh(task)
     return task
+
+async def delete_task(task_id: str, db: AsyncSession) -> None:
+    task = await get_task_by_id(task_id, db)
+    if task is not None:
+        await db.delete(task)
+        await db.commit()

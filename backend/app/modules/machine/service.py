@@ -76,7 +76,7 @@ async def update_state(
         raise NotFoundException(f"Machine {machine_id} not found")
 
     previous_state = machine.current_state
-    source = "dispatcher" if actor.role == "dispatcher" else "operator"
+    source = "dispatcher" if actor.role in ("dispatcher", "dev") else "operator"
 
     await repository.insert_machine_state(
         machine_id=machine_id,

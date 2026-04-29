@@ -122,7 +122,15 @@ async def resolve_conflict(conflict_id: str, resolved_by_user_id: str, db: Async
     conflict = result.scalar_one_or_none()
     conflict.resolved = True
     conflict.resolved_by_user_id = resolved_by_user_id
-    conflict.resolved_at = datetime.now(timezone.utc).isoformat()
+    conflict.resolved_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(conflict)
     return conflict
+
+async def get_unresolved_conflicts(machine_id: str, db: AsyncSession) -> list[Conflict]:
+    result = await db.execute(
+        select(Conflict)
+        .where(Conflict.machine_id == machine_id, Conflict.resolved == False)  # noqa: E712
+        .order_by(Conflict.created_at.desc())
+    )
+    return list(result.scalars().all())

@@ -9,3 +9,6 @@ export const updateTask = (id: string, data: { state: string }) =>
   client.patch<Task>(`/tasks/${id}`, data).then(r => r.data)
 export const confirmTaskActivation = (id: string) =>
   client.post<Task>(`/tasks/${id}/confirm-activation`).then(r => r.data)
+
+export const deleteTask = (id: string) =>
+  client.delete(`/tasks/${id}`)

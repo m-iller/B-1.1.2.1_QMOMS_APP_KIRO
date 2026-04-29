@@ -4,6 +4,7 @@ interface UsePollingResult<T> {
   data: T | null
   error: Error | null
   loading: boolean
+  refresh: () => void
 }
 
 /**
@@ -24,6 +25,7 @@ export function usePolling<T>(
   const [loading, setLoading] = useState(true)
   const fetchRef = useRef(fetchFn)
   fetchRef.current = fetchFn
+  const runRef = useRef<() => void>(() => {})
 
   const enabled = options?.enabled !== false
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,6 +57,7 @@ export function usePolling<T>(
       }
     }
 
+    runRef.current = run
     run()
     const timerId = setInterval(run, intervalMs)
     return () => {
@@ -65,5 +68,5 @@ export function usePolling<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intervalMs, enabled, ...deps])
 
-  return { data, error, loading }
+  return { data, error, loading, refresh: () => runRef.current() }
 }
