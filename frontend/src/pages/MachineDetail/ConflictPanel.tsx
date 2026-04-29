@@ -11,6 +11,8 @@ interface Props {
 
 const RESOLVE_ROLES = ['dispatcher', 'admin', 'dev']
 
+type Resolution = 'dispatcher' | 'operator'
+
 export function ConflictPanel({ machineId, conflicts, onResolved }: Props) {
   const { user } = useAuth()
   const canResolve = RESOLVE_ROLES.includes(user?.role ?? '')
@@ -19,11 +21,11 @@ export function ConflictPanel({ machineId, conflicts, onResolved }: Props) {
 
   if (conflicts.length === 0) return null
 
-  const handleResolve = async (conflictId: string) => {
-    setResolvingId(conflictId)
+  const handleResolve = async (conflictId: string, resolution: Resolution) => {
+    setResolvingId(`${conflictId}-${resolution}`)
     setError('')
     try {
-      await resolveConflict(machineId, conflictId)
+      await resolveConflict(machineId, conflictId, resolution)
       onResolved()
     } catch (err: any) {
       setError(err?.response?.data?.message ?? 'Failed to resolve conflict')
@@ -58,23 +60,24 @@ export function ConflictPanel({ machineId, conflicts, onResolved }: Props) {
             marginBottom: 8,
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-            <div style={{ fontSize: 13 }}>
-              <div style={{ marginBottom: 4 }}>
-                <span style={{ color: '#6b7280' }}>Dispatcher set:</span>{' '}
-                <strong style={{ color: '#1d4ed8' }}>{conflict.dispatcher_state}</strong>
-                <span style={{ margin: '0 8px', color: '#9ca3af' }}>vs</span>
-                <span style={{ color: '#6b7280' }}>Operator set:</span>{' '}
-                <strong style={{ color: '#dc2626' }}>{conflict.operator_state}</strong>
-              </div>
-              <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                {new Date(conflict.created_at).toLocaleString()}
-              </div>
+          <div style={{ fontSize: 13, marginBottom: 10 }}>
+            <div style={{ marginBottom: 6 }}>
+              <span style={{ color: '#6b7280' }}>Dispatcher set:</span>{' '}
+              <strong style={{ color: '#1d4ed8' }}>{conflict.dispatcher_state}</strong>
+              <span style={{ margin: '0 10px', color: '#9ca3af' }}>vs</span>
+              <span style={{ color: '#6b7280' }}>Operator set:</span>{' '}
+              <strong style={{ color: '#dc2626' }}>{conflict.operator_state}</strong>
             </div>
-            {canResolve && (
+            <div style={{ fontSize: 11, color: '#9ca3af' }}>
+              {new Date(conflict.created_at).toLocaleString()}
+            </div>
+          </div>
+
+          {canResolve && (
+            <div style={{ display: 'flex', gap: 8 }}>
               <button
-                onClick={() => handleResolve(conflict.id)}
-                disabled={resolvingId === conflict.id}
+                onClick={() => handleResolve(conflict.id, 'dispatcher')}
+                disabled={resolvingId !== null}
                 style={{
                   padding: '5px 14px',
                   fontSize: 12,
@@ -82,21 +85,32 @@ export function ConflictPanel({ machineId, conflicts, onResolved }: Props) {
                   color: '#fff',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: resolvingId === conflict.id ? 'not-allowed' : 'pointer',
-                  flexShrink: 0,
+                  cursor: resolvingId !== null ? 'not-allowed' : 'pointer',
                 }}
               >
-                {resolvingId === conflict.id ? 'Resolving...' : 'Resolve (Keep Dispatcher)'}
+                {resolvingId === `${conflict.id}-dispatcher` ? '...' : `✓ Keep Dispatcher (${conflict.dispatcher_state})`}
               </button>
-            )}
-          </div>
+              <button
+                onClick={() => handleResolve(conflict.id, 'operator')}
+                disabled={resolvingId !== null}
+                style={{
+                  padding: '5px 14px',
+                  fontSize: 12,
+                  background: '#dc2626',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: resolvingId !== null ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {resolvingId === `${conflict.id}-operator` ? '...' : `✓ Keep Operator (${conflict.operator_state})`}
+              </button>
+            </div>
+          )}
         </div>
       ))}
 
       {error && <p style={{ color: '#dc2626', fontSize: 12, margin: '8px 0 0' }}>{error}</p>}
-      <p style={{ fontSize: 11, color: '#92400e', margin: '8px 0 0' }}>
-        Resolving accepts the dispatcher state as authoritative and clears the conflict.
-      </p>
     </div>
   )
 }

@@ -118,15 +118,30 @@ async def assign_dispatcher(
 async def resolve_conflict(
     machine_id: str,
     conflict_id: str,
+    resolution: str,
     actor,
     db: AsyncSession,
     event_service,
 ) -> MachineResponse:
+    """
+    Resolve a conflict by choosing which state wins.
+    resolution='dispatcher' → keep dispatcher_state
+    resolution='operator'   → keep operator_state
+    """
     machine = await repository.get_machine_by_id(machine_id, db)
     if machine is None:
         raise NotFoundException(f"Machine {machine_id} not found")
 
+    conflict = await repository.get_active_conflict(machine_id, db)
+    if conflict is None:
+        raise NotFoundException(f"No active conflict for machine {machine_id}")
+
+    winning_state = (
+        conflict.dispatcher_state if resolution == "dispatcher" else conflict.operator_state
+    )
+
     await repository.resolve_conflict(conflict_id, actor.id, db)
+    await repository.update_machine_state(machine_id, winning_state, db)
     await repository.update_machine_conflict(machine_id, False, db)
 
     if event_service is not None:
@@ -134,7 +149,7 @@ async def resolve_conflict(
             await event_service.emit(
                 machine_id=machine_id,
                 event_type="MACHINE_STATE_CHANGED",
-                payload={"conflict_resolved": True},
+                payload={"conflict_resolved": True, "winning_state": winning_state, "resolution": resolution},
                 db=db,
             )
         except Exception as exc:

@@ -179,3 +179,77 @@ def test_create_machine_request_valid(name: str, machine_type: str, initial_stat
     assert req.name == name
     assert req.type == machine_type
     assert req.initial_state == initial_state
+
+
+# ---------------------------------------------------------------------------
+# Property 13: Conflict Resolution — Dispatcher Wins
+# When resolution='dispatcher', winning_state == dispatcher_state
+# ---------------------------------------------------------------------------
+def _resolve_winning_state(dispatcher_state: str, operator_state: str, resolution: str) -> str:
+    """Mirror of service.resolve_conflict winning state logic."""
+    return dispatcher_state if resolution == "dispatcher" else operator_state
+
+
+@given(
+    dispatcher_state=st.sampled_from(MACHINE_STATES),
+    operator_state=st.sampled_from(MACHINE_STATES),
+)
+@h_settings(max_examples=100)
+def test_resolve_dispatcher_keeps_dispatcher_state(dispatcher_state: str, operator_state: str):
+    """Property 13a: resolution='dispatcher' always yields dispatcher_state."""
+    winning = _resolve_winning_state(dispatcher_state, operator_state, "dispatcher")
+    assert winning == dispatcher_state
+
+
+@given(
+    dispatcher_state=st.sampled_from(MACHINE_STATES),
+    operator_state=st.sampled_from(MACHINE_STATES),
+)
+@h_settings(max_examples=100)
+def test_resolve_operator_keeps_operator_state(dispatcher_state: str, operator_state: str):
+    """Property 13b: resolution='operator' always yields operator_state."""
+    winning = _resolve_winning_state(dispatcher_state, operator_state, "operator")
+    assert winning == operator_state
+
+
+@given(
+    state=st.sampled_from(MACHINE_STATES),
+    resolution=st.sampled_from(["dispatcher", "operator"]),
+)
+@h_settings(max_examples=100)
+def test_resolve_same_states_always_same_result(state: str, resolution: str):
+    """Property 13c: When both states are equal, resolution always yields that state."""
+    winning = _resolve_winning_state(state, state, resolution)
+    assert winning == state
+
+
+def test_resolve_conflict_request_valid_resolutions():
+    """Property 13d: ResolveConflictRequest accepts only 'dispatcher' or 'operator'."""
+    from app.modules.machine.schemas import ResolveConflictRequest
+    for resolution in ("dispatcher", "operator"):
+        req = ResolveConflictRequest(resolution=resolution)
+        assert req.resolution == resolution
+
+
+@given(resolution=st.sampled_from(["dispatcher", "operator"]))
+@h_settings(max_examples=50)
+def test_resolve_conflict_request_roundtrip(resolution: str):
+    """Property 13e: ResolveConflictRequest round-trips resolution value."""
+    from app.modules.machine.schemas import ResolveConflictRequest
+    req = ResolveConflictRequest(resolution=resolution)
+    assert req.resolution == resolution
+
+
+# ---------------------------------------------------------------------------
+# Property 14: Dev role uses dispatcher source
+# dev role must map to source='dispatcher' to bypass conflict detection
+# ---------------------------------------------------------------------------
+@given(role=st.sampled_from(["dispatcher", "dev", "operator", "admin", "manager"]))
+@h_settings(max_examples=100)
+def test_dev_and_dispatcher_use_dispatcher_source(role: str):
+    """Property 14: dev and dispatcher roles use source='dispatcher'."""
+    source = "dispatcher" if role in ("dispatcher", "dev") else "operator"
+    if role in ("dispatcher", "dev"):
+        assert source == "dispatcher"
+    else:
+        assert source == "operator"

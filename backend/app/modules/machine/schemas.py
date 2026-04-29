@@ -18,6 +18,10 @@ class AssignDispatcherRequest(BaseModel):
     dispatcher_id: str
 
 
+class ResolveConflictRequest(BaseModel):
+    resolution: str  # "dispatcher" | "operator" — which state to keep
+
+
 class MachineResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

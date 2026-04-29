@@ -8,6 +8,7 @@ from app.modules.machine.schemas import (
     CreateMachineRequest,
     ConflictResponse,
     MachineResponse,
+    ResolveConflictRequest,
     UpdateMachineStateRequest,
 )
 
@@ -100,7 +101,8 @@ async def list_machine_conflicts(
 async def resolve_conflict(
     machine_id: str,
     conflict_id: str,
+    payload: ResolveConflictRequest,
     db: AsyncSession = Depends(get_db),
     actor=Depends(require_roles(["dispatcher", "dev"])),
 ):
-    return await service.resolve_conflict(machine_id, conflict_id, actor, db, _event_service)
+    return await service.resolve_conflict(machine_id, conflict_id, payload.resolution, actor, db, _event_service)

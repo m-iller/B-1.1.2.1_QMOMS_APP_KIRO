@@ -9,5 +9,5 @@ export const updateMachineState = (id: string, state: string) =>
   client.patch<Machine>(`/machines/${id}/state`, { state }).then(r => r.data)
 export const getMachineConflicts = (machineId: string) =>
   client.get<Conflict[]>(`/machines/${machineId}/conflicts`).then(r => r.data)
-export const resolveConflict = (machineId: string, conflictId: string) =>
-  client.post<Machine>(`/machines/${machineId}/conflicts/${conflictId}/resolve`).then(r => r.data)
+export const resolveConflict = (machineId: string, conflictId: string, resolution: 'dispatcher' | 'operator') =>
+  client.post<Machine>(`/machines/${machineId}/conflicts/${conflictId}/resolve`, { resolution }).then(r => r.data)
