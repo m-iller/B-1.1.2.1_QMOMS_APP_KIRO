@@ -9,6 +9,7 @@ import { MapViewPage } from './pages/MapView/MapViewPage'
 import { MachineDetailPage } from './pages/MachineDetail/MachineDetailPage'
 import { TaskPanelPage } from './pages/TaskPanel/TaskPanelPage'
 import { NotificationsPage } from './pages/Notifications/NotificationsPage'
+import { AnalyticsPage } from './pages/Analytics/AnalyticsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
@@ -47,6 +48,7 @@ function AppRoutes() {
         <Route path="/machines/:id" element={<MachineDetailPage />} />
         <Route path="/tasks" element={<TaskPanelPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

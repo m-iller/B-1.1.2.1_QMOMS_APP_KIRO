@@ -117,3 +117,60 @@ export interface MapConfigRequest {
   default_zoom: number
   antennas: AntennaDefinition[]
 }
+
+// ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+export interface ProductionMetrics {
+  total_material_tonnes: number
+  total_ore_tonnes: number
+  total_waste_tonnes: number
+  ore_to_waste_ratio: number
+  avg_production_rate_tph: number
+  peak_production_rate_tph: number
+  median_production_rate_tph: number
+  planned_production_tonnes: number
+  actual_production_tonnes: number
+  plan_fulfillment_pct: number
+  production_deviation_tonnes: number
+  crusher_input_tonnes: number
+  stockpile_accumulation_rate_tph: number
+  system_throughput_tph: number
+  material_per_zone: Record<string, number>
+}
+
+export interface FleetMetrics {
+  total_machines: number
+  active_machines: number
+  idle_machines: number
+  maintenance_machines: number
+  offline_machines: number
+  fleet_utilization_pct: number
+  avg_machine_utilization_pct: number
+  median_machine_utilization_pct: number
+  idle_ratio_pct: number
+  active_to_idle_ratio: number
+  machines_working_vs_assigned_pct: number
+  total_breakdown_events: number
+  machines_under_repair: number
+  avg_repair_time_minutes: number
+  total_fleet_downtime_minutes: number
+  avg_downtime_per_machine_minutes: number
+}
+
+export interface TaskMetrics {
+  total_created: number
+  completed: number
+  in_progress: number
+  pending: number
+  overdue: number
+}
+
+export interface DashboardAnalytics {
+  production: ProductionMetrics
+  fleet: FleetMetrics
+  tasks: TaskMetrics
+  shift_id: string | null
+  generated_at: string
+}

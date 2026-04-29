@@ -126,6 +126,12 @@ try:
 except ImportError:
     pass
 
+try:
+    from app.modules.analytics.router import router as analytics_router
+    app.include_router(analytics_router, tags=["analytics"])
+except ImportError:
+    pass
+
 
 # ---------------------------------------------------------------------------
 # Health check

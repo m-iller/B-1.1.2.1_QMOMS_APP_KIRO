@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 const MAP_ROLES = ['dispatcher', 'admin', 'dev']
 const TASK_ROLES = ['operator', 'dispatcher', 'manager', 'admin', 'dev']
 const NOTIFICATION_ROLES = ['dispatcher', 'admin', 'dev']
+const ANALYTICS_ROLES = ['dispatcher', 'admin', 'dev', 'manager']
 
 export function Sidebar() {
   const { unreadCount } = useNotifications()
@@ -16,6 +17,7 @@ export function Sidebar() {
     { to: '/', label: 'Dashboard', show: true },
     { to: '/map', label: 'Map View', show: MAP_ROLES.includes(role) },
     { to: '/tasks', label: 'Tasks', show: TASK_ROLES.includes(role) },
+    { to: '/analytics', label: 'Analytics', show: ANALYTICS_ROLES.includes(role) },
     { to: '/notifications', label: 'Notifications', badge: true, show: NOTIFICATION_ROLES.includes(role) },
   ].filter(item => item.show)
 

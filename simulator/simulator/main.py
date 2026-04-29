@@ -35,14 +35,6 @@ TASK_NEXT_STATE: dict[str, str] = {
     "active": "completed",
 }
 
-# Weighted state transition table for machine state simulation
-STATE_TRANSITION_WEIGHTS: dict[str, list[tuple[str, float]]] = {
-    "idle":        [("operating", 0.6), ("maintenance", 0.3), ("idle", 0.1)],
-    "operating":   [("idle", 0.3), ("operating", 0.5), ("maintenance", 0.15), ("breakdown", 0.05)],
-    "maintenance": [("idle", 0.5), ("operating", 0.4), ("maintenance", 0.1)],
-    "breakdown":   [("maintenance", 0.7), ("idle", 0.3)],
-}
-
 _TASKS_FILE = Path(__file__).parent / "tasks.json"
 try:
     TASK_TEMPLATES: list[dict] = json.loads(_TASKS_FILE.read_text())
@@ -206,9 +198,7 @@ async def simulate_machine_states(
                 continue
 
             current = machine_states.get(machine_id, "idle")
-            choices = STATE_TRANSITION_WEIGHTS.get(current, [("idle", 1.0)])
-            states, probs = zip(*choices)
-            new_state = random.choices(states, weights=probs, k=1)[0]
+            new_state = random.choice(MACHINE_STATES)
 
             if new_state == current:
                 continue
