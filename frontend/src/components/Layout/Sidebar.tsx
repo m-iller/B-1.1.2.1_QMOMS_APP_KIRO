@@ -1,31 +1,29 @@
 import { NavLink } from 'react-router-dom'
 import { useNotifications } from '../../context/NotificationContext'
+import { usePermissions } from '../../context/PermissionsContext'
 import { NavBadge } from './NavBadge'
 import { useAuth } from '../../context/AuthContext'
 
-const MAP_ROLES = ['dispatcher', 'admin', 'dev']
-const TASK_ROLES = ['operator', 'dispatcher', 'manager', 'admin', 'dev']
-const NOTIFICATION_ROLES = ['dispatcher', 'admin', 'dev']
-const ANALYTICS_ROLES = ['dispatcher', 'admin', 'dev', 'manager']
-const MACHINERY_ROLES = ['dispatcher', 'admin', 'dev']
-const ZONES_ROLES = ['dispatcher', 'admin', 'dev']
-const ROUTES_ROLES = ['dispatcher', 'admin', 'dev']
+const ALL_PAGES = [
+  { to: '/',             page: 'dashboard',     label: 'Dashboard',      badge: false },
+  { to: '/map',          page: 'map',           label: 'Map View',       badge: false },
+  { to: '/tasks',        page: 'tasks',         label: 'Tasks',          badge: false },
+  { to: '/analytics',    page: 'analytics',     label: 'Analytics',      badge: false },
+  { to: '/machinery',    page: 'machinery',     label: 'Machinery',      badge: false },
+  { to: '/zones',        page: 'zones',         label: 'Zones',          badge: false },
+  { to: '/routes',       page: 'routes',        label: 'Routes',         badge: false },
+  { to: '/notifications',page: 'notifications', label: 'Notifications',  badge: true  },
+  { to: '/roles',        page: 'roles',         label: 'Roles',          badge: false },
+]
 
 export function Sidebar() {
   const { unreadCount } = useNotifications()
   const { user, logout } = useAuth()
-  const role = user?.role ?? ''
+  const { canAccess } = usePermissions()
 
-  const navItems = [
-    { to: '/', label: 'Dashboard', show: true },
-    { to: '/map', label: 'Map View', show: MAP_ROLES.includes(role) },
-    { to: '/tasks', label: 'Tasks', show: TASK_ROLES.includes(role) },
-    { to: '/analytics', label: 'Analytics', show: ANALYTICS_ROLES.includes(role) },
-    { to: '/machinery', label: 'Machinery', show: MACHINERY_ROLES.includes(role) },
-    { to: '/zones', label: 'Zones', show: ZONES_ROLES.includes(role) },
-    { to: '/routes', label: 'Routes', show: ROUTES_ROLES.includes(role) },
-    { to: '/notifications', label: 'Notifications', badge: true, show: NOTIFICATION_ROLES.includes(role) },
-  ].filter(item => item.show)
+  const navItems = ALL_PAGES.filter(item =>
+    item.page === 'dashboard' || canAccess(item.page)
+  )
 
   return (
     <nav style={{ width: 200, background: '#1e293b', color: '#f1f5f9', minHeight: '100vh', padding: 16, display: 'flex', flexDirection: 'column' }}>

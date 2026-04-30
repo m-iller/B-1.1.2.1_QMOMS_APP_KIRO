@@ -138,6 +138,12 @@ try:
 except ImportError:
     pass
 
+try:
+    from app.modules.role_permissions.router import router as role_permissions_router
+    app.include_router(role_permissions_router, prefix="/role-permissions", tags=["role-permissions"])
+except ImportError:
+    pass
+
 
 # ---------------------------------------------------------------------------
 # Health check
