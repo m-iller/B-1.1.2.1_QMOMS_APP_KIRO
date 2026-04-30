@@ -20,7 +20,7 @@ ROLE_PERMISSIONS = {
         "tasks.create",
     ],
     "dispatcher": [
-        "dashboard", "map", "tasks", "notifications", "analytics", "machinery", "zones", "routes",
+        "dashboard", "map", "tasks", "notifications", "analytics", "machinery", "zones", "routes", "shift_report",
         "tasks.create", "tasks.delete",
         "machines.edit_state", "machines.edit_config",
         "map.configure",
@@ -33,7 +33,7 @@ ROLE_PERMISSIONS = {
         "tasks.create",
     ],
     "admin": [
-        "dashboard", "map", "tasks", "notifications", "analytics", "machinery", "zones", "routes",
+        "dashboard", "map", "tasks", "notifications", "analytics", "machinery", "zones", "routes", "shift_report",
         "tasks.create", "tasks.delete",
         "machines.edit_state", "machines.edit_config", "machines.delete",
         "map.configure",
@@ -48,7 +48,7 @@ ROLE_PERMISSIONS = {
     "IT": ["dashboard"],
     "owner": ["dashboard", "analytics"],
     "dev": [
-        "dashboard", "map", "tasks", "notifications", "analytics", "machinery", "zones", "routes", "roles",
+        "dashboard", "map", "tasks", "notifications", "analytics", "machinery", "zones", "routes", "roles", "shift_report",
         "tasks.create", "tasks.delete",
         "machines.edit_state", "machines.edit_config", "machines.delete",
         "map.configure",

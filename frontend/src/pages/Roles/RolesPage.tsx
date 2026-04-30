@@ -19,6 +19,7 @@ const ALL_PAGES = [
   { id: 'routes',        label: 'Routes',          group: 'pages' },
   { id: 'notifications', label: 'Notifications',   group: 'pages' },
   { id: 'roles',         label: 'Roles',           group: 'pages' },
+  { id: 'shift_report',  label: 'Shift Report',    group: 'pages' },
   // Action privileges
   { id: 'tasks.create',        label: 'Create Tasks',          group: 'actions' },
   { id: 'tasks.delete',        label: 'Delete Tasks',          group: 'actions' },

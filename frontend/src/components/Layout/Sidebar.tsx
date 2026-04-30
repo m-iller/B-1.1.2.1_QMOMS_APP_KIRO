@@ -14,6 +14,7 @@ const ALL_PAGES = [
   { to: '/routes',       page: 'routes',        label: 'Routes',         badge: false },
   { to: '/notifications',page: 'notifications', label: 'Notifications',  badge: true  },
   { to: '/roles',        page: 'roles',         label: 'Roles',          badge: false },
+  { to: '/shift-report', page: 'shift_report',  label: 'Shift Report',   badge: false },
 ]
 
 export function Sidebar() {

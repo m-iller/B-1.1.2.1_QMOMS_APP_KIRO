@@ -15,6 +15,7 @@ import { MachineryPage } from './pages/Machinery/MachineryPage'
 import { ZonesPage } from './pages/Zones/ZonesPage'
 import { RoutesPage } from './pages/Routes/RoutesPage'
 import { RolesPage } from './pages/Roles/RolesPage'
+import { ShiftReportPage } from './pages/ShiftReport/ShiftReportPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
@@ -69,6 +70,7 @@ function AppRoutes() {
         <Route path="/zones" element={<PageGuard page="zones"><ZonesPage /></PageGuard>} />
         <Route path="/routes" element={<PageGuard page="routes"><RoutesPage /></PageGuard>} />
         <Route path="/roles" element={<PageGuard page="roles"><RolesPage /></PageGuard>} />
+        <Route path="/shift-report" element={<PageGuard page="shift_report"><ShiftReportPage /></PageGuard>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
