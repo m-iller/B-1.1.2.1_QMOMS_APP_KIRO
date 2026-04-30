@@ -2,14 +2,12 @@ import { useState } from 'react'
 import type { Task } from '../../types/api.types'
 import { OverdueBadge } from '../../components/OverdueBadge'
 import { deleteTask } from '../../api/tasks'
-import { useAuth } from '../../context/AuthContext'
+import { usePermissions } from '../../context/PermissionsContext'
 
 interface Props {
   tasks: Task[]
   onRefresh: () => void
 }
-
-const DELETABLE_ROLES = ['dispatcher', 'admin', 'dev']
 
 const STATE_COLORS: Record<string, string> = {
   pending: '#f3f4f6',
@@ -19,8 +17,8 @@ const STATE_COLORS: Record<string, string> = {
 }
 
 export function TaskList({ tasks, onRefresh }: Props) {
-  const { user } = useAuth()
-  const canDelete = DELETABLE_ROLES.includes(user?.role ?? '')
+  const { canDo } = usePermissions()
+  const canDelete = canDo('tasks.delete')
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const handleDelete = async (taskId: string) => {

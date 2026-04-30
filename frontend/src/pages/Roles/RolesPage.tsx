@@ -10,16 +10,30 @@ import { usePermissions } from '../../context/PermissionsContext'
 import { ErrorBanner } from '../../components/ErrorBanner'
 
 const ALL_PAGES = [
-  { id: 'dashboard',     label: 'Dashboard' },
-  { id: 'map',           label: 'Map View' },
-  { id: 'tasks',         label: 'Tasks' },
-  { id: 'analytics',     label: 'Analytics' },
-  { id: 'machinery',     label: 'Machinery' },
-  { id: 'zones',         label: 'Zones' },
-  { id: 'routes',        label: 'Routes' },
-  { id: 'notifications', label: 'Notifications' },
-  { id: 'roles',         label: 'Roles (this page)' },
+  { id: 'dashboard',     label: 'Dashboard',      group: 'pages' },
+  { id: 'map',           label: 'Map View',        group: 'pages' },
+  { id: 'tasks',         label: 'Tasks',           group: 'pages' },
+  { id: 'analytics',     label: 'Analytics',       group: 'pages' },
+  { id: 'machinery',     label: 'Machinery',       group: 'pages' },
+  { id: 'zones',         label: 'Zones',           group: 'pages' },
+  { id: 'routes',        label: 'Routes',          group: 'pages' },
+  { id: 'notifications', label: 'Notifications',   group: 'pages' },
+  { id: 'roles',         label: 'Roles',           group: 'pages' },
+  // Action privileges
+  { id: 'tasks.create',        label: 'Create Tasks',          group: 'actions' },
+  { id: 'tasks.delete',        label: 'Delete Tasks',          group: 'actions' },
+  { id: 'machines.edit_state', label: 'Change Machine State',  group: 'actions' },
+  { id: 'machines.edit_config',label: 'Edit Machine Config',   group: 'actions' },
+  { id: 'machines.delete',     label: 'Delete Machines',       group: 'actions' },
+  { id: 'map.configure',       label: 'Configure Map',         group: 'actions' },
+  { id: 'zones.create',        label: 'Create/Edit Zones',     group: 'actions' },
+  { id: 'zones.delete',        label: 'Delete Zones',          group: 'actions' },
+  { id: 'routes.manage',       label: 'Manage Routes',         group: 'actions' },
+  { id: 'conflicts.resolve',   label: 'Resolve Conflicts',     group: 'actions' },
 ]
+
+const PAGE_ITEMS = ALL_PAGES.filter(p => p.group === 'pages')
+const ACTION_ITEMS = ALL_PAGES.filter(p => p.group === 'actions')
 
 const PROTECTED_ROLES = new Set(['dev', 'admin', 'dispatcher', 'operator'])
 
@@ -135,7 +149,18 @@ export function RolesPage() {
           <div style={{ fontSize: 13, marginBottom: 10 }}>
             <strong>Pages:</strong>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-              {ALL_PAGES.map(p => (
+              {PAGE_ITEMS.map(p => (
+                <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={newPages.includes(p.id)} onChange={() => toggleNewPage(p.id)} />
+                  {p.label}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div style={{ fontSize: 13, marginBottom: 10 }}>
+            <strong>Action Privileges:</strong>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+              {ACTION_ITEMS.map(p => (
                 <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
                   <input type="checkbox" checked={newPages.includes(p.id)} onChange={() => toggleNewPage(p.id)} />
                   {p.label}
@@ -198,7 +223,19 @@ export function RolesPage() {
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {ALL_PAGES.map(p => (
+              <div style={{ width: '100%', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Pages</div>
+              {PAGE_ITEMS.map(p => (
+                <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={pages.includes(p.id)}
+                    onChange={() => togglePage(role.role, p.id)}
+                  />
+                  <span style={{ color: pages.includes(p.id) ? '#111827' : '#9ca3af' }}>{p.label}</span>
+                </label>
+              ))}
+              <div style={{ width: '100%', fontSize: 12, fontWeight: 600, color: '#374151', marginTop: 8, marginBottom: 4 }}>Action Privileges</div>
+              {ACTION_ITEMS.map(p => (
                 <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
                   <input
                     type="checkbox"

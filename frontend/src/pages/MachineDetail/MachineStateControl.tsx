@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { updateMachineState } from '../../api/machines'
-import { useAuth } from '../../context/AuthContext'
+import { usePermissions } from '../../context/PermissionsContext'
 
 interface Props {
   machineId: string
@@ -9,7 +9,6 @@ interface Props {
 }
 
 const MACHINE_STATES = ['idle', 'operating', 'maintenance', 'breakdown']
-const ALLOWED_ROLES = ['dispatcher', 'admin', 'dev']
 
 const STATE_COLORS: Record<string, string> = {
   idle: '#f3f4f6',
@@ -19,11 +18,11 @@ const STATE_COLORS: Record<string, string> = {
 }
 
 export function MachineStateControl({ machineId, currentState, onRefresh }: Props) {
-  const { user } = useAuth()
+  const { canDo } = usePermissions()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  if (!ALLOWED_ROLES.includes(user?.role ?? '')) return null
+  if (!canDo('machines.edit_state')) return null
 
   const handleChange = async (newState: string) => {
     if (newState === currentState) return

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Conflict } from '../../types/api.types'
 import { resolveConflict } from '../../api/machines'
-import { useAuth } from '../../context/AuthContext'
+import { usePermissions } from '../../context/PermissionsContext'
 
 interface Props {
   machineId: string
@@ -9,13 +9,11 @@ interface Props {
   onResolved: () => void
 }
 
-const RESOLVE_ROLES = ['dispatcher', 'admin', 'dev']
-
 type Resolution = 'dispatcher' | 'operator'
 
 export function ConflictPanel({ machineId, conflicts, onResolved }: Props) {
-  const { user } = useAuth()
-  const canResolve = RESOLVE_ROLES.includes(user?.role ?? '')
+  const { canDo } = usePermissions()
+  const canResolve = canDo('conflicts.resolve')
   const [resolvingId, setResolvingId] = useState<string | null>(null)
   const [error, setError] = useState('')
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../context/AuthContext'
+import { usePermissions } from '../../context/PermissionsContext'
 import { getMapConfig, putMapConfig } from '../../api/mapConfig'
 import type { AntennaDefinition, MapConfigRequest } from '../../types/api.types'
 
@@ -10,8 +10,8 @@ const DEFAULT_ANTENNAS: AntennaDefinition[] = [
 ]
 
 export function MapConfigForm() {
-  const { user } = useAuth()
-  const canEdit = user?.role === 'dispatcher' || user?.role === 'admin' || user?.role === 'dev'
+  const { canDo } = usePermissions()
+  const canEdit = canDo('map.configure')
 
   const [open, setOpen] = useState(false)
   const [centerLat, setCenterLat] = useState('')

@@ -5,12 +5,14 @@ import { useAuth } from './AuthContext'
 interface PermissionsContextValue {
   permissions: RolePermission[]
   canAccess: (page: string) => boolean
+  canDo: (privilege: string) => boolean
   refresh: () => void
 }
 
 const PermissionsContext = createContext<PermissionsContextValue>({
   permissions: [],
   canAccess: () => true,
+  canDo: () => true,
   refresh: () => {},
 })
 
@@ -34,12 +36,19 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
   const canAccess = useCallback((page: string): boolean => {
     if (!user) return false
     const rolePerms = permissions.find(p => p.role === user.role)
-    if (!rolePerms) return true // unknown role — allow (graceful degradation)
+    if (!rolePerms) return true
     return rolePerms.pages.includes(page)
   }, [user, permissions])
 
+  const canDo = useCallback((privilege: string): boolean => {
+    if (!user) return false
+    const rolePerms = permissions.find(p => p.role === user.role)
+    if (!rolePerms) return true
+    return rolePerms.pages.includes(privilege)
+  }, [user, permissions])
+
   return (
-    <PermissionsContext.Provider value={{ permissions, canAccess, refresh }}>
+    <PermissionsContext.Provider value={{ permissions, canAccess, canDo, refresh }}>
       {children}
     </PermissionsContext.Provider>
   )

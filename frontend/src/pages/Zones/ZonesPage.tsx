@@ -5,7 +5,7 @@ import { getZones, createZone, updateZone, deleteZone } from '../../api/zones'
 import { getMapConfig } from '../../api/mapConfig'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import type { Zone, MapConfig } from '../../types/api.types'
-import { useAuth } from '../../context/AuthContext'
+import { usePermissions } from '../../context/PermissionsContext'
 
 const ZONE_TYPES = [
   { value: 'weighbridge',     label: 'Weighbridge',     color: '#8b5cf6' },
@@ -59,9 +59,9 @@ function buildZoneGeoJSON(zone: Zone): GeoJSON.Feature | null {
 }
 
 export function ZonesPage() {
-  const { user } = useAuth()
-  const canEdit = EDIT_ROLES.includes(user?.role ?? '')
-  const canDelete = DELETE_ROLES.includes(user?.role ?? '')
+  const { canDo } = usePermissions()
+  const canEdit = canDo('zones.create')
+  const canDelete = canDo('zones.delete')
 
   const [zones, setZones] = useState<Zone[]>([])
   const [error, setError] = useState<unknown>(null)

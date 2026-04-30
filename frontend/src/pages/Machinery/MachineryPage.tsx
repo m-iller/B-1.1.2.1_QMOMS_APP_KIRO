@@ -2,16 +2,15 @@ import { useState, useCallback, useEffect } from 'react'
 import { getMachines, createMachine, deleteMachine, updateMachineConfig } from '../../api/machines'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import type { Machine } from '../../types/api.types'
-import { useAuth } from '../../context/AuthContext'
+import { usePermissions } from '../../context/PermissionsContext'
 
 const ALL_SENSORS = ['engine_temp', 'fuel_level', 'speed', 'payload_weight']
 const MACHINE_TYPES = ['excavator', 'haul_truck', 'drill', 'dozer', 'grader']
-const ADMIN_ROLES = ['admin', 'dev']
 
 export function MachineryPage() {
-  const { user } = useAuth()
-  const canAdmin = ADMIN_ROLES.includes(user?.role ?? '')
-  const canEdit = ['admin', 'dispatcher', 'dev'].includes(user?.role ?? '')
+  const { canDo } = usePermissions()
+  const canAdmin = canDo('machines.delete')
+  const canEdit = canDo('machines.edit_config')
 
   const [machines, setMachines] = useState<Machine[]>([])
   const [error, setError] = useState<unknown>(null)
