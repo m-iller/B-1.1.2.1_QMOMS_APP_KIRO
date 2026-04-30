@@ -20,9 +20,11 @@ async def create_zone(
     description: str | None,
     zone_type: str | None,
     color: str | None,
+    shape: str,
     center_lat: float | None,
     center_lng: float | None,
     radius_meters: float,
+    polygon_points: list[dict] | None,
     db: AsyncSession,
 ) -> Zone:
     zone = Zone(
@@ -30,9 +32,11 @@ async def create_zone(
         description=description,
         zone_type=zone_type,
         color=color,
+        shape=shape,
         center_lat=center_lat,
         center_lng=center_lng,
         radius_meters=radius_meters,
+        polygon_points=polygon_points,
     )
     db.add(zone)
     await db.commit()
@@ -46,26 +50,23 @@ async def update_zone(
     description: str | None,
     zone_type: str | None,
     color: str | None,
+    shape: str | None,
     center_lat: float | None,
     center_lng: float | None,
     radius_meters: float | None,
+    polygon_points: list[dict] | None,
     db: AsyncSession,
 ) -> Zone:
     values: dict = {}
-    if name is not None:
-        values["name"] = name
-    if description is not None:
-        values["description"] = description
-    if zone_type is not None:
-        values["zone_type"] = zone_type
-    if color is not None:
-        values["color"] = color
-    if center_lat is not None:
-        values["center_lat"] = center_lat
-    if center_lng is not None:
-        values["center_lng"] = center_lng
-    if radius_meters is not None:
-        values["radius_meters"] = radius_meters
+    if name is not None: values["name"] = name
+    if description is not None: values["description"] = description
+    if zone_type is not None: values["zone_type"] = zone_type
+    if color is not None: values["color"] = color
+    if shape is not None: values["shape"] = shape
+    if center_lat is not None: values["center_lat"] = center_lat
+    if center_lng is not None: values["center_lng"] = center_lng
+    if radius_meters is not None: values["radius_meters"] = radius_meters
+    if polygon_points is not None: values["polygon_points"] = polygon_points
     if values:
         values["updated_at"] = func.now()
         await db.execute(update(Zone).where(Zone.id == zone_id).values(**values))

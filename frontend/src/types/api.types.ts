@@ -79,9 +79,11 @@ export interface Zone {
   description: string | null
   zone_type: string | null
   color: string | null
+  shape: string | null
   center_lat: number | null
   center_lng: number | null
   radius_meters: number | null
+  polygon_points: Array<{ lat: number; lng: number }> | null
   created_at: string
   updated_at: string
 }

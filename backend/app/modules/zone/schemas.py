@@ -3,14 +3,21 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
+class ZonePoint(BaseModel):
+    lat: float
+    lng: float
+
+
 class CreateZoneRequest(BaseModel):
     name: str
     description: Optional[str] = None
     zone_type: Optional[str] = None
     color: Optional[str] = None
-    center_lat: Optional[float] = None
-    center_lng: Optional[float] = None
-    radius_meters: float = 200.0
+    shape: str = "circle"                        # circle | rectangle | polygon
+    center_lat: Optional[float] = None           # circle only
+    center_lng: Optional[float] = None           # circle only
+    radius_meters: float = 200.0                 # circle only
+    polygon_points: Optional[list[ZonePoint]] = None  # rectangle/polygon
 
 
 class UpdateZoneRequest(BaseModel):
@@ -18,9 +25,11 @@ class UpdateZoneRequest(BaseModel):
     description: Optional[str] = None
     zone_type: Optional[str] = None
     color: Optional[str] = None
+    shape: Optional[str] = None
     center_lat: Optional[float] = None
     center_lng: Optional[float] = None
     radius_meters: Optional[float] = None
+    polygon_points: Optional[list[ZonePoint]] = None
 
 
 class ZoneResponse(BaseModel):
@@ -31,9 +40,11 @@ class ZoneResponse(BaseModel):
     description: Optional[str] = None
     zone_type: Optional[str] = None
     color: Optional[str] = None
+    shape: Optional[str] = "circle"
     center_lat: Optional[float] = None
     center_lng: Optional[float] = None
     radius_meters: Optional[float] = None
+    polygon_points: Optional[list[dict]] = None
     created_at: datetime
     updated_at: datetime
 
