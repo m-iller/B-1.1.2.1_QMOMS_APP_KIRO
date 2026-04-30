@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db, require_roles
@@ -9,6 +9,7 @@ from app.modules.machine.schemas import (
     ConflictResponse,
     MachineResponse,
     ResolveConflictRequest,
+    UpdateMachineConfigRequest,
     UpdateMachineStateRequest,
 )
 
@@ -72,6 +73,25 @@ async def assign_dispatcher(
     _actor=Depends(require_roles(["admin", "dispatcher"])),
 ):
     await service.assign_dispatcher(machine_id, payload, db)
+
+
+@router.patch("/{machine_id}/config", response_model=MachineResponse)
+async def update_machine_config(
+    machine_id: str,
+    payload: UpdateMachineConfigRequest,
+    db: AsyncSession = Depends(get_db),
+    _actor=Depends(require_roles(["admin", "dispatcher", "dev"])),
+):
+    return await service.update_config(machine_id, payload.description, payload.enabled_sensors, db)
+
+
+@router.delete("/{machine_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_machine(
+    machine_id: str,
+    db: AsyncSession = Depends(get_db),
+    _actor=Depends(require_roles(["admin", "dev"])),
+):
+    await service.delete(machine_id, db)
 
 
 @router.get("/{machine_id}/conflicts", response_model=list[ConflictResponse])

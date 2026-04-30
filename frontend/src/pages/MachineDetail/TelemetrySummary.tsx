@@ -1,10 +1,17 @@
 import type { TelemetryRecord } from '../../types/api.types'
 
-interface Props { records: TelemetryRecord[] }
+interface Props {
+  records: TelemetryRecord[]
+  enabledSensors?: string[]
+}
 
-export function TelemetrySummary({ records }: Props) {
-  const lastUpdate = records.length > 0
-    ? new Date(Math.max(...records.map(r => new Date(r.timestamp).getTime())))
+export function TelemetrySummary({ records, enabledSensors }: Props) {
+  const filtered = enabledSensors && enabledSensors.length > 0
+    ? records.filter(r => enabledSensors.includes(r.sensor_type))
+    : records
+
+  const lastUpdate = filtered.length > 0
+    ? new Date(Math.max(...filtered.map(r => new Date(r.timestamp).getTime())))
     : null
 
   return (
@@ -18,7 +25,7 @@ export function TelemetrySummary({ records }: Props) {
         )}
       </div>
 
-      {records.length === 0 && (
+      {filtered.length === 0 && (
         <p style={{ color: '#6b7280', marginTop: 8 }}>No telemetry data yet</p>
       )}
 
@@ -31,7 +38,7 @@ export function TelemetrySummary({ records }: Props) {
           </tr>
         </thead>
         <tbody>
-          {records.map(r => (
+          {filtered.map(r => (
             <tr key={r.sensor_type} style={{ borderBottom: '1px solid #e5e7eb' }}>
               <td style={{ padding: '6px 8px', fontWeight: 600, fontSize: 13 }}>{r.sensor_type}</td>
               <td style={{ padding: '6px 8px', fontFamily: 'monospace', fontSize: 13 }}>

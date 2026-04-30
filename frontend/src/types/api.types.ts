@@ -15,8 +15,10 @@ export interface Machine {
   id: string
   name: string
   type: string
+  description: string | null
   current_state: string
   conflict_active: boolean
+  enabled_sensors: string[]
   assigned_dispatcher_id: string | null
   current_zone_id: string | null
   pos_x: number | null

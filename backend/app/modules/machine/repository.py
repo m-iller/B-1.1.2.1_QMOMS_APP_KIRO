@@ -134,3 +134,25 @@ async def get_unresolved_conflicts(machine_id: str, db: AsyncSession) -> list[Co
         .order_by(Conflict.created_at.desc())
     )
     return list(result.scalars().all())
+
+async def delete_machine(machine_id: str, db: AsyncSession) -> None:
+    machine = await get_machine_by_id(machine_id, db)
+    if machine is not None:
+        await db.delete(machine)
+        await db.commit()
+
+
+async def update_machine_config(
+    machine_id: str,
+    description: str | None,
+    enabled_sensors: list[str] | None,
+    db: AsyncSession,
+) -> Machine:
+    machine = await get_machine_by_id(machine_id, db)
+    if description is not None:
+        machine.description = description
+    if enabled_sensors is not None:
+        machine.enabled_sensors = enabled_sensors
+    await db.commit()
+    await db.refresh(machine)
+    return machine

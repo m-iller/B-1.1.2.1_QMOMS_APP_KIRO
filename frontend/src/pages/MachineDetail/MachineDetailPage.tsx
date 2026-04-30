@@ -66,6 +66,7 @@ export function MachineDetailPage() {
       )}
       <p><strong>State:</strong> {machine.current_state}</p>
       <p><strong>Type:</strong> {machine.type}</p>
+      {machine.description && <p><strong>Description:</strong> {machine.description}</p>}
       {machine.current_zone_id && <p><strong>Zone:</strong> {machine.current_zone_id}</p>}
       {machine.pos_x !== null && machine.pos_y !== null && (
         <p>
@@ -78,7 +79,7 @@ export function MachineDetailPage() {
       <hr />
       <MachineStateControl machineId={machine.id} currentState={machine.current_state} onRefresh={refreshMachine} />
       <hr />
-      <TelemetrySummary records={telemetry ?? []} />
+      <TelemetrySummary records={telemetry ?? []} enabledSensors={machine.enabled_sensors} />
       <hr />
       <TaskList tasks={tasks ?? []} onRefresh={refreshTasks} />
     </div>

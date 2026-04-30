@@ -7,7 +7,14 @@ from pydantic import BaseModel, ConfigDict
 class CreateMachineRequest(BaseModel):
     name: str
     type: str  # excavator|haul_truck|drill|dozer|grader
+    description: Optional[str] = None
     initial_state: str = "idle"
+    enabled_sensors: list[str] = ["engine_temp", "fuel_level", "speed", "payload_weight"]
+
+
+class UpdateMachineConfigRequest(BaseModel):
+    description: Optional[str] = None
+    enabled_sensors: Optional[list[str]] = None
 
 
 class UpdateMachineStateRequest(BaseModel):
@@ -28,8 +35,10 @@ class MachineResponse(BaseModel):
     id: str
     name: str
     type: str
+    description: Optional[str] = None
     current_state: str
     conflict_active: bool
+    enabled_sensors: list[str] = []
     assigned_dispatcher_id: Optional[str] = None
     current_zone_id: Optional[str] = None
     pos_x: Optional[float] = None

@@ -157,3 +157,23 @@ async def resolve_conflict(
 
     updated = await repository.get_machine_by_id(machine_id, db)
     return MachineResponse.model_validate(updated)
+
+
+async def delete(machine_id: str, db: AsyncSession) -> None:
+    machine = await repository.get_machine_by_id(machine_id, db)
+    if machine is None:
+        raise NotFoundException(f"Machine {machine_id} not found")
+    await repository.delete_machine(machine_id, db)
+
+
+async def update_config(
+    machine_id: str,
+    description: str | None,
+    enabled_sensors: list[str] | None,
+    db: AsyncSession,
+) -> MachineResponse:
+    machine = await repository.get_machine_by_id(machine_id, db)
+    if machine is None:
+        raise NotFoundException(f"Machine {machine_id} not found")
+    updated = await repository.update_machine_config(machine_id, description, enabled_sensors, db)
+    return MachineResponse.model_validate(updated)
