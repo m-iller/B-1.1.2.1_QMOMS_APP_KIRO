@@ -2,7 +2,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import { useNavigate } from 'react-router-dom'
-import type { Machine, MapConfig } from '../../types/api.types'
+import type { Machine, MapConfig, Zone, MachineRoute } from '../../types/api.types'
 
 const OSM_STYLE: maplibregl.StyleSpecification = {
   version: 8,
@@ -35,9 +35,11 @@ const SAT_STYLE: maplibregl.StyleSpecification = {
 interface Props {
   machines: Machine[]
   mapConfig: MapConfig
+  zones?: Zone[]
+  routes?: MachineRoute[]
 }
 
-export function QuarryMap({ machines, mapConfig }: Props) {
+export function QuarryMap({ machines, mapConfig, zones = [], routes = [] }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const machineMarkersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
@@ -159,8 +161,7 @@ export function QuarryMap({ machines, mapConfig }: Props) {
   }, [navigate])
 
   // Add antenna markers once (they don't move)
-  useEffect(() => {
-    const map = mapRef.current
+  useEffect(() => {    const map = mapRef.current
     if (!map) return
 
     // Remove old antenna markers
@@ -218,6 +219,70 @@ export function QuarryMap({ machines, mapConfig }: Props) {
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapConfig.antennas])
+
+  // Render zone circles
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const addLayers = () => {
+      // Remove old zone layers
+      map.getStyle()?.layers?.forEach(layer => {
+        if (layer.id.startsWith('zone-fill-') || layer.id.startsWith('zone-border-')) {
+          map.removeLayer(layer.id)
+        }
+      })
+      Object.keys(map.getStyle()?.sources ?? {}).forEach(id => {
+        if (id.startsWith('zone-')) map.removeSource(id)
+      })
+
+      zones.forEach(zone => {
+        if (zone.center_lat == null || zone.center_lng == null || zone.radius_meters == null) return
+        // Approximate circle as GeoJSON polygon
+        const points = 64
+        const coords: [number, number][] = []
+        for (let i = 0; i <= points; i++) {
+          const angle = (i / points) * 2 * Math.PI
+          const dx = (zone.radius_meters / 111320) * Math.cos(angle)
+          const dy = (zone.radius_meters / (111320 * Math.cos(zone.center_lat * Math.PI / 180))) * Math.sin(angle)
+          coords.push([zone.center_lng + dy, zone.center_lat + dx])
+        }
+        const color = zone.color ?? '#3b82f6'
+        const sourceId = `zone-${zone.id}`
+        if (!map.getSource(sourceId)) {
+          map.addSource(sourceId, { type: 'geojson', data: { type: 'Feature', properties: { name: zone.name }, geometry: { type: 'Polygon', coordinates: [coords] } } })
+          map.addLayer({ id: `zone-fill-${zone.id}`, type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': 0.15 } })
+          map.addLayer({ id: `zone-border-${zone.id}`, type: 'line', source: sourceId, paint: { 'line-color': color, 'line-width': 2 } })
+        }
+      })
+    }
+    if (map.isStyleLoaded()) addLayers()
+    else map.once('load', addLayers)
+  }, [zones])
+
+  // Render machine routes
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const addLayers = () => {
+      map.getStyle()?.layers?.forEach(layer => {
+        if (layer.id.startsWith('route-line-')) map.removeLayer(layer.id)
+      })
+      Object.keys(map.getStyle()?.sources ?? {}).forEach(id => {
+        if (id.startsWith('route-src-')) map.removeSource(id)
+      })
+      routes.forEach(route => {
+        if (route.waypoints.length < 2) return
+        const coords = route.waypoints.map(wp => [wp.lng, wp.lat])
+        const srcId = `route-src-${route.id}`
+        if (!map.getSource(srcId)) {
+          map.addSource(srcId, { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } } })
+          map.addLayer({ id: `route-line-${route.id}`, type: 'line', source: srcId, paint: { 'line-color': route.color, 'line-width': 3 } })
+        }
+      })
+    }
+    if (map.isStyleLoaded()) addLayers()
+    else map.once('load', addLayers)
+  }, [routes])
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>

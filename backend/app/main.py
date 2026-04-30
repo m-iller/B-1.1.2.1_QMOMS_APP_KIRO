@@ -132,6 +132,12 @@ try:
 except ImportError:
     pass
 
+try:
+    from app.modules.route.router import router as route_router
+    app.include_router(route_router, prefix="/routes", tags=["routes"])
+except ImportError:
+    pass
+
 
 # ---------------------------------------------------------------------------
 # Health check

@@ -77,6 +77,26 @@ export interface Zone {
   id: string
   name: string
   description: string | null
+  zone_type: string | null
+  color: string | null
+  center_lat: number | null
+  center_lng: number | null
+  radius_meters: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Waypoint {
+  lat: number
+  lng: number
+}
+
+export interface MachineRoute {
+  id: string
+  machine_id: string
+  name: string
+  waypoints: Waypoint[]
+  color: string
   created_at: string
   updated_at: string
 }

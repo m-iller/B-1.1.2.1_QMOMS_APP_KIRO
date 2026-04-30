@@ -31,6 +31,22 @@ async def ingest(
     if payload.sensor_type in POSITION_SENSOR_TYPES:
         axis = "x" if payload.sensor_type == "pos_x" else "y"
         await update_position(payload.machine_id, axis, payload.value, db)
+
+        # Check zone entry when we have both coordinates (pos_y = lat)
+        if payload.sensor_type == "pos_y":
+            try:
+                from app.modules.zone.service import check_zone_entry
+                await check_zone_entry(
+                    machine_id=payload.machine_id,
+                    machine_name=machine.name,
+                    lat=payload.value,
+                    lng=machine.pos_x or 0.0,
+                    db=db,
+                    notification_service=notification_service,
+                )
+            except Exception as exc:
+                logger.warning("Zone entry check failed machine=%s: %s", payload.machine_id, exc)
+
         return PositionTelemetryResponse(
             sensor_type=payload.sensor_type,
             value=payload.value,
