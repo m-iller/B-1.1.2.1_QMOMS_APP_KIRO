@@ -67,6 +67,7 @@ export function ZonesPage() {
   const [error, setError] = useState<unknown>(null)
   const [loading, setLoading] = useState(true)
   const [mapConfig, setMapConfig] = useState<MapConfig | null>(null)
+  const [search, setSearch] = useState('')
 
   // Form state
   const [form, setForm] = useState({ name: '', description: '', zone_type: 'general', shape: 'circle', center_lat: '', center_lng: '', radius_meters: '200' })
@@ -391,7 +392,18 @@ export function ZonesPage() {
 
           {loading && <p style={{ color: '#6b7280' }}>Loading...</p>}
 
-          {zones.map(zone => (
+          <input
+            placeholder="Search zones..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, marginBottom: 8, boxSizing: 'border-box' }}
+          />
+
+          {zones.filter(z =>
+            z.name.toLowerCase().includes(search.toLowerCase()) ||
+            (z.zone_type ?? '').toLowerCase().includes(search.toLowerCase()) ||
+            (z.description ?? '').toLowerCase().includes(search.toLowerCase())
+          ).map(zone => (
             <div key={zone.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, marginBottom: 8, background: '#fff' }}>
               {editId === zone.id ? (
                 <div>

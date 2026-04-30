@@ -16,6 +16,7 @@ export function MachineryPage() {
   const [machines, setMachines] = useState<Machine[]>([])
   const [error, setError] = useState<unknown>(null)
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
   // Add form state
   const [addName, setAddName] = useState('')
@@ -176,7 +177,17 @@ export function MachineryPage() {
 
       {/* Machine list */}
       {loading && <p style={{ color: '#6b7280' }}>Loading...</p>}
-      {machines.map(machine => {
+      <input
+        placeholder="Search machines..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{ width: '100%', padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, marginBottom: 12, boxSizing: 'border-box' }}
+      />
+      {machines.filter(m =>
+        m.name.toLowerCase().includes(search.toLowerCase()) ||
+        m.type.toLowerCase().includes(search.toLowerCase()) ||
+        (m.description ?? '').toLowerCase().includes(search.toLowerCase())
+      ).map(machine => {
         const edit = editState[machine.id] ?? { description: machine.description ?? '', sensors: machine.enabled_sensors ?? ALL_SENSORS }
         const isDirty =
           edit.description !== (machine.description ?? '') ||

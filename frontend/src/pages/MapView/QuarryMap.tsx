@@ -46,6 +46,13 @@ export function QuarryMap({ machines, mapConfig, zones = [], routes = [] }: Prop
   const antennaMarkersRef = useRef<maplibregl.Marker[]>([])
   const [useSatellite, setUseSatellite] = useState(false)
   const navigate = useNavigate()
+  const isFirstRender = useRef(true)
+
+  // Refs to hold latest zones/routes so style-reload handler can access them
+  const zonesRef = useRef(zones)
+  const routesRef = useRef(routes)
+  useEffect(() => { zonesRef.current = zones }, [zones])
+  useEffect(() => { routesRef.current = routes }, [routes])
 
   // Initialize map once
   useEffect(() => {
@@ -69,11 +76,69 @@ export function QuarryMap({ machines, mapConfig, zones = [], routes = [] }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Toggle tile layer
+  // Toggle tile layer — re-add all data layers after style reloads
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+    // Skip on first render — map initializes with OSM already
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
     map.setStyle(useSatellite ? SAT_STYLE : OSM_STYLE)
+    // After setStyle, all sources/layers are wiped — re-add on next idle
+    map.once('styledata', () => {
+      // Re-add zones
+      const zones = zonesRef.current
+      zones.forEach(zone => {
+        let coords: [number, number][] = []
+        if ((zone.shape === 'rectangle' || zone.shape === 'polygon') && zone.polygon_points && zone.polygon_points.length >= 3) {
+          coords = zone.polygon_points.map(p => [p.lng, p.lat] as [number, number])
+          coords.push(coords[0])
+        } else if (zone.center_lat != null && zone.center_lng != null && zone.radius_meters != null) {
+          const pts = 64
+          for (let i = 0; i <= pts; i++) {
+            const angle = (i / pts) * 2 * Math.PI
+            const dx = (zone.radius_meters / 111320) * Math.cos(angle)
+            const dy = (zone.radius_meters / (111320 * Math.cos(zone.center_lat * Math.PI / 180))) * Math.sin(angle)
+            coords.push([zone.center_lng + dy, zone.center_lat + dx])
+          }
+        } else return
+        const color = zone.color ?? '#3b82f6'
+        const sourceId = `zone-${zone.id}`
+        if (!map.getSource(sourceId)) {
+          map.addSource(sourceId, { type: 'geojson', data: { type: 'Feature', properties: { id: zone.id, name: zone.name, zone_type: zone.zone_type ?? 'general', shape: zone.shape ?? 'circle', color, description: zone.description ?? '', radius_meters: zone.radius_meters ?? null, point_count: zone.polygon_points?.length ?? null }, geometry: { type: 'Polygon', coordinates: [coords] } } })
+          map.addLayer({ id: `zone-fill-${zone.id}`, type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': 0.15 } })
+          map.addLayer({ id: `zone-border-${zone.id}`, type: 'line', source: sourceId, paint: { 'line-color': color, 'line-width': 2 } })
+          map.on('click', `zone-fill-${zone.id}`, (e) => {
+            const props = e.features?.[0]?.properties
+            if (!props) return
+            const shapeInfo = props.shape === 'circle' ? `<div style="font-size:12px;color:#6b7280">Radius: ${props.radius_meters}m</div>` : `<div style="font-size:12px;color:#6b7280">${props.point_count} points</div>`
+            new maplibregl.Popup({ offset: 8 }).setLngLat(e.lngLat).setHTML(`<div style="min-width:160px;font-family:system-ui,sans-serif"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="width:10px;height:10px;border-radius:50%;background:${props.color};display:inline-block;flex-shrink:0"></span><strong style="font-size:14px">${props.name}</strong></div><div style="font-size:11px;background:#f3f4f6;padding:2px 6px;border-radius:3px;display:inline-block;margin-bottom:4px">${(props.zone_type ?? 'general').replace('_', ' ')} · ${props.shape}</div>${shapeInfo}${props.description ? `<div style="font-size:12px;color:#374151;margin-top:4px">${props.description}</div>` : ''}</div>`).addTo(map)
+          })
+          map.on('mouseenter', `zone-fill-${zone.id}`, () => { map.getCanvas().style.cursor = 'pointer' })
+          map.on('mouseleave', `zone-fill-${zone.id}`, () => { map.getCanvas().style.cursor = '' })
+        }
+      })
+      // Re-add routes
+      const routes = routesRef.current
+      routes.forEach(route => {
+        if (route.waypoints.length < 2) return
+        const coords = route.waypoints.map(wp => [wp.lng, wp.lat])
+        const srcId = `route-src-${route.id}`
+        if (!map.getSource(srcId)) {
+          map.addSource(srcId, { type: 'geojson', data: { type: 'Feature', properties: { id: route.id, name: route.name, color: route.color, waypoint_count: route.waypoints.length }, geometry: { type: 'LineString', coordinates: coords } } })
+          map.addLayer({ id: `route-line-${route.id}`, type: 'line', source: srcId, paint: { 'line-color': route.color, 'line-width': 3 } })
+          map.on('click', `route-line-${route.id}`, (e) => {
+            const props = e.features?.[0]?.properties
+            if (!props) return
+            new maplibregl.Popup({ offset: 8 }).setLngLat(e.lngLat).setHTML(`<div style="min-width:150px;font-family:system-ui,sans-serif"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="width:14px;height:4px;background:${props.color};border-radius:2px;display:inline-block;flex-shrink:0"></span><strong style="font-size:14px">${props.name}</strong></div><div style="font-size:12px;color:#6b7280">${props.waypoint_count} waypoints</div></div>`).addTo(map)
+          })
+          map.on('mouseenter', `route-line-${route.id}`, () => { map.getCanvas().style.cursor = 'pointer' })
+          map.on('mouseleave', `route-line-${route.id}`, () => { map.getCanvas().style.cursor = '' })
+        }
+      })
+    })
   }, [useSatellite])
 
   // Update machine markers
@@ -85,10 +150,11 @@ export function QuarryMap({ machines, mapConfig, zones = [], routes = [] }: Prop
       m => m.pos_x !== null && m.pos_y !== null
     )
     const currentIds = new Set(visibleMachines.map(m => m.id))
-
-    // Remove markers for machines no longer visible
+    // Only remove markers for machines that are no longer in the machines list at all
+    // (not just temporarily missing position — position may lag a poll cycle)
+    const allMachineIds = new Set(machines.map(m => m.id))
     machineMarkersRef.current.forEach((marker, id) => {
-      if (!currentIds.has(id)) {
+      if (!allMachineIds.has(id)) {
         marker.remove()
         machineMarkersRef.current.delete(id)
       }
@@ -225,7 +291,6 @@ export function QuarryMap({ machines, mapConfig, zones = [], routes = [] }: Prop
     const map = mapRef.current
     if (!map) return
     const addLayers = () => {
-      // Remove old zone layers
       map.getStyle()?.layers?.forEach(layer => {
         if (layer.id.startsWith('zone-fill-') || layer.id.startsWith('zone-border-')) {
           map.removeLayer(layer.id)
@@ -236,22 +301,68 @@ export function QuarryMap({ machines, mapConfig, zones = [], routes = [] }: Prop
       })
 
       zones.forEach(zone => {
-        if (zone.center_lat == null || zone.center_lng == null || zone.radius_meters == null) return
-        // Approximate circle as GeoJSON polygon
-        const points = 64
-        const coords: [number, number][] = []
-        for (let i = 0; i <= points; i++) {
-          const angle = (i / points) * 2 * Math.PI
-          const dx = (zone.radius_meters / 111320) * Math.cos(angle)
-          const dy = (zone.radius_meters / (111320 * Math.cos(zone.center_lat * Math.PI / 180))) * Math.sin(angle)
-          coords.push([zone.center_lng + dy, zone.center_lat + dx])
+        let coords: [number, number][] = []
+
+        if ((zone.shape === 'rectangle' || zone.shape === 'polygon') && zone.polygon_points && zone.polygon_points.length >= 3) {
+          coords = zone.polygon_points.map(p => [p.lng, p.lat] as [number, number])
+          coords.push(coords[0])
+        } else if (zone.center_lat != null && zone.center_lng != null && zone.radius_meters != null) {
+          const pts = 64
+          for (let i = 0; i <= pts; i++) {
+            const angle = (i / pts) * 2 * Math.PI
+            const dx = (zone.radius_meters / 111320) * Math.cos(angle)
+            const dy = (zone.radius_meters / (111320 * Math.cos(zone.center_lat * Math.PI / 180))) * Math.sin(angle)
+            coords.push([zone.center_lng + dy, zone.center_lat + dx])
+          }
+        } else {
+          return
         }
+
         const color = zone.color ?? '#3b82f6'
         const sourceId = `zone-${zone.id}`
+        const properties = {
+          id: zone.id,
+          name: zone.name,
+          zone_type: zone.zone_type ?? 'general',
+          shape: zone.shape ?? 'circle',
+          color,
+          description: zone.description ?? '',
+          radius_meters: zone.radius_meters ?? null,
+          point_count: zone.polygon_points?.length ?? null,
+        }
+
         if (!map.getSource(sourceId)) {
-          map.addSource(sourceId, { type: 'geojson', data: { type: 'Feature', properties: { name: zone.name }, geometry: { type: 'Polygon', coordinates: [coords] } } })
+          map.addSource(sourceId, {
+            type: 'geojson',
+            data: { type: 'Feature', properties, geometry: { type: 'Polygon', coordinates: [coords] } },
+          })
           map.addLayer({ id: `zone-fill-${zone.id}`, type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': 0.15 } })
           map.addLayer({ id: `zone-border-${zone.id}`, type: 'line', source: sourceId, paint: { 'line-color': color, 'line-width': 2 } })
+
+          // Click on fill layer → popup
+          map.on('click', `zone-fill-${zone.id}`, (e) => {
+            const props = e.features?.[0]?.properties
+            if (!props) return
+            const shapeInfo = props.shape === 'circle'
+              ? `<div style="font-size:12px;color:#6b7280">Radius: ${props.radius_meters}m</div>`
+              : `<div style="font-size:12px;color:#6b7280">${props.point_count} points</div>`
+            new maplibregl.Popup({ offset: 8 })
+              .setLngLat(e.lngLat)
+              .setHTML(`
+                <div style="min-width:160px;font-family:system-ui,sans-serif">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                    <span style="width:10px;height:10px;border-radius:50%;background:${props.color};display:inline-block;flex-shrink:0"></span>
+                    <strong style="font-size:14px">${props.name}</strong>
+                  </div>
+                  <div style="font-size:11px;background:#f3f4f6;padding:2px 6px;border-radius:3px;display:inline-block;margin-bottom:4px">${(props.zone_type ?? 'general').replace('_', ' ')} · ${props.shape}</div>
+                  ${shapeInfo}
+                  ${props.description ? `<div style="font-size:12px;color:#374151;margin-top:4px">${props.description}</div>` : ''}
+                </div>
+              `)
+              .addTo(map)
+          })
+          map.on('mouseenter', `zone-fill-${zone.id}`, () => { map.getCanvas().style.cursor = 'pointer' })
+          map.on('mouseleave', `zone-fill-${zone.id}`, () => { map.getCanvas().style.cursor = '' })
         }
       })
     }
@@ -263,6 +374,12 @@ export function QuarryMap({ machines, mapConfig, zones = [], routes = [] }: Prop
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+
+    // Track route midpoint markers for cleanup
+    const routeMarkers: maplibregl.Marker[] = (map as any).__routeMarkers ?? []
+    routeMarkers.forEach(m => m.remove())
+    ;(map as any).__routeMarkers = []
+
     const addLayers = () => {
       map.getStyle()?.layers?.forEach(layer => {
         if (layer.id.startsWith('route-line-')) map.removeLayer(layer.id)
@@ -270,14 +387,59 @@ export function QuarryMap({ machines, mapConfig, zones = [], routes = [] }: Prop
       Object.keys(map.getStyle()?.sources ?? {}).forEach(id => {
         if (id.startsWith('route-src-')) map.removeSource(id)
       })
+
       routes.forEach(route => {
         if (route.waypoints.length < 2) return
         const coords = route.waypoints.map(wp => [wp.lng, wp.lat])
         const srcId = `route-src-${route.id}`
+
         if (!map.getSource(srcId)) {
-          map.addSource(srcId, { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } } })
+          map.addSource(srcId, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: { id: route.id, name: route.name, color: route.color, waypoint_count: route.waypoints.length },
+              geometry: { type: 'LineString', coordinates: coords },
+            },
+          })
           map.addLayer({ id: `route-line-${route.id}`, type: 'line', source: srcId, paint: { 'line-color': route.color, 'line-width': 3 } })
+
+          // Click on line
+          map.on('click', `route-line-${route.id}`, (e) => {
+            const props = e.features?.[0]?.properties
+            if (!props) return
+            new maplibregl.Popup({ offset: 8 })
+              .setLngLat(e.lngLat)
+              .setHTML(`
+                <div style="min-width:150px;font-family:system-ui,sans-serif">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                    <span style="width:14px;height:4px;background:${props.color};border-radius:2px;display:inline-block;flex-shrink:0"></span>
+                    <strong style="font-size:14px">${props.name}</strong>
+                  </div>
+                  <div style="font-size:12px;color:#6b7280">${props.waypoint_count} waypoints</div>
+                </div>
+              `)
+              .addTo(map)
+          })
+          map.on('mouseenter', `route-line-${route.id}`, () => { map.getCanvas().style.cursor = 'pointer' })
+          map.on('mouseleave', `route-line-${route.id}`, () => { map.getCanvas().style.cursor = '' })
         }
+
+        // Midpoint marker for easier clicking on thin lines
+        const mid = route.waypoints[Math.floor(route.waypoints.length / 2)]
+        const el = document.createElement('div')
+        el.style.cssText = `width:10px;height:10px;background:${route.color};border:2px solid #fff;border-radius:50%;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.4);`
+        const popup = new maplibregl.Popup({ offset: 10 }).setHTML(`
+          <div style="min-width:150px;font-family:system-ui,sans-serif">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <span style="width:14px;height:4px;background:${route.color};border-radius:2px;display:inline-block;flex-shrink:0"></span>
+              <strong style="font-size:14px">${route.name}</strong>
+            </div>
+            <div style="font-size:12px;color:#6b7280">${route.waypoints.length} waypoints</div>
+          </div>
+        `)
+        const marker = new maplibregl.Marker({ element: el }).setLngLat([mid.lng, mid.lat]).setPopup(popup).addTo(map)
+        ;(map as any).__routeMarkers.push(marker)
       })
     }
     if (map.isStyleLoaded()) addLayers()

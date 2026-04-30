@@ -51,6 +51,8 @@ export function RoutesPage() {
   const [pickingMode, setPickingMode] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [searchMachine, setSearchMachine] = useState('')
+  const [searchRoute, setSearchRoute] = useState('')
 
   // Manual coordinate entry
   const [manualLat, setManualLat] = useState('')
@@ -168,14 +170,35 @@ export function RoutesPage() {
     const render = () => {
       map.getStyle()?.layers?.forEach(l => { if (l.id.startsWith('rl-')) map.removeLayer(l.id) })
       Object.keys(map.getStyle()?.sources ?? {}).forEach(id => { if (id.startsWith('rs-')) map.removeSource(id) })
+      // Render saved routes
       const visible = selectedMachineId ? routes.filter(r => r.machine_id === selectedMachineId) : routes
       visible.forEach(route => {
         if (route.waypoints.length < 2) return
         const coords = route.waypoints.map((wp: Waypoint) => [wp.lng, wp.lat])
         const sid = `rs-${route.id}`
+        const machineName = machines.find(m => m.id === route.machine_id)?.name ?? route.machine_id
         if (!map.getSource(sid)) {
-          map.addSource(sid, { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } } })
+          map.addSource(sid, { type: 'geojson', data: { type: 'Feature', properties: { name: route.name, color: route.color, machine: machineName, waypoints: route.waypoints.length }, geometry: { type: 'LineString', coordinates: coords } } })
+          // Wide invisible hit area for easy clicking
+          map.addLayer({ id: `rl-hit-${route.id}`, type: 'line', source: sid, paint: { 'line-color': 'transparent', 'line-width': 16 } })
+          // Visible line
           map.addLayer({ id: `rl-${route.id}`, type: 'line', source: sid, paint: { 'line-color': route.color, 'line-width': 3 } })
+          map.on('click', `rl-hit-${route.id}`, (e) => {
+            const props = e.features?.[0]?.properties
+            if (!props) return
+            new maplibregl.Popup({ offset: 8 }).setLngLat(e.lngLat).setHTML(`
+              <div style="min-width:160px;font-family:system-ui,sans-serif">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <span style="width:14px;height:4px;background:${props.color};border-radius:2px;display:inline-block;flex-shrink:0"></span>
+                  <strong style="font-size:14px">${props.name}</strong>
+                </div>
+                <div style="font-size:12px;color:#374151;margin-bottom:2px">🚜 ${props.machine}</div>
+                <div style="font-size:12px;color:#6b7280">${props.waypoints} waypoints</div>
+              </div>
+            `).addTo(map)
+          })
+          map.on('mouseenter', `rl-hit-${route.id}`, () => { map.getCanvas().style.cursor = 'pointer' })
+          map.on('mouseleave', `rl-hit-${route.id}`, () => { map.getCanvas().style.cursor = '' })
         }
       })
     }
@@ -230,13 +253,30 @@ export function RoutesPage() {
             </select>
           </label>
 
-          {selectedMachineId && (
-            <button onClick={startNew} style={{ width: '100%', padding: '7px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, marginBottom: 12 }}>
-              + New Route
-            </button>
+          {!selectedMachineId && (
+            <input
+              placeholder="Search machines..."
+              value={searchMachine}
+              onChange={e => setSearchMachine(e.target.value)}
+              style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, marginBottom: 8, boxSizing: 'border-box' }}
+            />
           )}
 
-          {machineRoutes.map(route => (
+          {selectedMachineId && (
+            <>
+              <input
+                placeholder="Search routes..."
+                value={searchRoute}
+                onChange={e => setSearchRoute(e.target.value)}
+                style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, marginBottom: 8, boxSizing: 'border-box' }}
+              />
+              <button onClick={startNew} style={{ width: '100%', padding: '7px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, marginBottom: 12 }}>
+                + New Route
+              </button>
+            </>
+          )}
+
+          {machineRoutes.filter(r => r.name.toLowerCase().includes(searchRoute.toLowerCase())).map(route => (
             <div key={route.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: 10, marginBottom: 8, background: '#fff' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                 <span style={{ width: 10, height: 10, background: route.color, borderRadius: 2, flexShrink: 0 }} />
