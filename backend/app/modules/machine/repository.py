@@ -103,6 +103,11 @@ async def get_active_conflict(machine_id: str, db: AsyncSession) -> Conflict | N
     return result.scalar_one_or_none()
 
 
+async def get_conflict_by_id(conflict_id: str, db: AsyncSession) -> Conflict | None:
+    result = await db.execute(select(Conflict).where(Conflict.id == conflict_id))
+    return result.scalar_one_or_none()
+
+
 async def insert_conflict(
     machine_id: str, dispatcher_state: str, operator_state: str, db: AsyncSession
 ) -> Conflict:

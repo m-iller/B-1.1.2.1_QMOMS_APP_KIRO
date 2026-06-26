@@ -142,9 +142,9 @@ async def resolve_conflict(
     if machine is None:
         raise NotFoundException(f"Machine {machine_id} not found")
 
-    conflict = await repository.get_active_conflict(machine_id, db)
+    conflict = await repository.get_conflict_by_id(conflict_id, db)
     if conflict is None:
-        raise NotFoundException(f"No active conflict for machine {machine_id}")
+        raise NotFoundException(f"Conflict {conflict_id} not found or already resolved")
 
     winning_state = (
         conflict.dispatcher_state if resolution == "dispatcher" else conflict.operator_state
