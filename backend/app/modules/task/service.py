@@ -67,7 +67,7 @@ async def create(payload: CreateTaskRequest, actor, db: AsyncSession, event_serv
         description=payload.description,
         priority=payload.priority,
         deadline=payload.deadline,
-        created_by=actor.id,
+        created_by=actor.id if actor else None,  # Handle unauthenticated simulator
         db=db,
     )
 
@@ -108,11 +108,12 @@ async def update_state(
     previous_state = task.state
 
     # Operator requesting activation → set pending_activation flag, state unchanged
-    if new_state == "active" and actor.role == "operator":
+    # Skip role check if actor is None (unauthenticated simulator)
+    if new_state == "active" and actor and actor.role == "operator":
         task = await repository.set_pending_activation(task_id, True, db)
         return _to_response(task)
 
-    if new_state == "validated" and actor.role not in TASK_VALIDATOR_ROLES:
+    if new_state == "validated" and actor and actor.role not in TASK_VALIDATOR_ROLES:
         raise ForbiddenException("Only dispatchers can validate tasks")
 
     task = await repository.update_task_state(task_id, new_state, db)

@@ -76,24 +76,34 @@ async def update_state(
         raise NotFoundException(f"Machine {machine_id} not found")
 
     previous_state = machine.current_state
-    source = "dispatcher" if actor.role in ("dispatcher", "dev") else "operator"
+    
+    # Handle unauthenticated simulator access
+    if actor is None:
+        source = "telemetry"  # Use 'telemetry' as source for simulator (matches DB constraint)
+        user_id = None
+    else:
+        source = "dispatcher" if actor.role in ("dispatcher", "dev") else "operator"
+        user_id = actor.id
 
     await repository.insert_machine_state(
         machine_id=machine_id,
         state=payload.state,
         source=source,
-        set_by_user_id=actor.id,
+        set_by_user_id=user_id,
         db=db,
     )
 
-    await detect_and_handle_conflict(machine_id, actor.role, db, event_service, notification_service)
+    # Only check for conflicts if actor is authenticated
+    if actor is not None:
+        await detect_and_handle_conflict(machine_id, actor.role, db, event_service, notification_service)
 
     try:
+        role_desc = actor.role if actor else "simulator"
         await _notification_service.broadcast_to_roles(
             roles=list(OPERATIONAL_NOTIFY_ROLES),
             type_="system",
             name=f"Machine State Changed: {machine.name}",
-            desc=f"State: {previous_state} → {payload.state} | By: {actor.role}",
+            desc=f"State: {previous_state} → {payload.state} | By: {role_desc}",
             bigdesc=f"Machine ID: {machine_id}\nType: {machine.type}",
             db=db,
         )
