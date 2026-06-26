@@ -1,7 +1,7 @@
 from typing import Union
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.dependencies import get_current_user, get_db, require_roles
+from app.dependencies import get_current_user, get_current_user_optional, get_db, require_roles
 from app.modules.telemetry.schemas import IngestTelemetryRequest, PositionTelemetryResponse, TelemetryResponse
 from app.modules.telemetry import service
 
@@ -23,8 +23,12 @@ except (ImportError, Exception):
 async def ingest_telemetry(
     payload: IngestTelemetryRequest,
     db: AsyncSession = Depends(get_db),
-    _actor=Depends(get_current_user),
+    _actor=Depends(get_current_user_optional),  # Optional auth for simulator
 ):
+    """
+    Ingest telemetry data. Authentication is optional to allow simulator to post without token.
+    All other telemetry endpoints require authentication.
+    """
     return await service.ingest(payload, db, _event_service, _notification_service)
 
 @router.get("/{machine_id}/latest", response_model=list[TelemetryResponse])

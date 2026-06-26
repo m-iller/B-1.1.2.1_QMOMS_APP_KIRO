@@ -6,7 +6,6 @@ class ApiClient:
     def __init__(self):
         self._client = httpx.AsyncClient(
             base_url=settings.API_URL,
-            headers={"Authorization": f"Bearer {settings.API_TOKEN}"},
             timeout=10.0,
             trust_env=False,  # bypass system proxy (corporate VPN/proxy)
         )

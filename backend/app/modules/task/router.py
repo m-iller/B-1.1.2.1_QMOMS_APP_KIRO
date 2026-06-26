@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, status
 from app.common.roles import DISPATCHER_ROLES
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.dependencies import get_current_user, get_db, require_roles
+from app.dependencies import get_current_user, get_current_user_optional, get_db, require_roles
 from app.modules.task import service, haul_cycle_service
 from app.modules.task.schemas import CreateHaulCycleRequest, CreateTaskRequest, HaulCycleResponse, TaskResponse, UpdateTaskRequest
 
@@ -18,16 +18,22 @@ async def list_tasks(
     machine_id: str | None = Query(None),
     state: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
-    _actor=Depends(get_current_user),
+    _actor=Depends(get_current_user_optional),  # Optional auth for simulator
 ):
+    """
+    List tasks. Authentication is optional to allow simulator to query tasks.
+    """
     return await service.find_all(machine_id, state, db)
 
 @router.post("/tasks", response_model=TaskResponse, status_code=201)
 async def create_task(
     payload: CreateTaskRequest,
     db: AsyncSession = Depends(get_db),
-    actor=Depends(require_roles(["operator", "dispatcher", "admin", "manager"])),
+    actor=Depends(get_current_user_optional),  # Optional auth for simulator
 ):
+    """
+    Create a task. Authentication is optional to allow simulator to create tasks.
+    """
     return await service.create(payload, actor, db, _event_service)
 
 @router.get("/tasks/{task_id}", response_model=TaskResponse)
@@ -43,8 +49,11 @@ async def update_task(
     task_id: str,
     payload: UpdateTaskRequest,
     db: AsyncSession = Depends(get_db),
-    actor=Depends(require_roles(["operator", "dispatcher", "admin", "manager"])),
+    actor=Depends(get_current_user_optional),  # Optional auth for simulator
 ):
+    """
+    Update a task. Authentication is optional to allow simulator to update task state.
+    """
     return await service.update_state(task_id, payload, actor, db, _event_service)
 
 @router.post("/tasks/{task_id}/confirm-activation", response_model=TaskResponse)

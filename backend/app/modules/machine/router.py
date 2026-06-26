@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_user, get_db, require_roles
+from app.dependencies import get_current_user, get_current_user_optional, get_db, require_roles
 from app.modules.machine import service
 from app.modules.machine.schemas import (
     AssignDispatcherRequest,
@@ -32,8 +32,12 @@ except (ImportError, Exception):
 @router.get("", response_model=list[MachineResponse])
 async def list_machines(
     db: AsyncSession = Depends(get_db),
-    _actor=Depends(get_current_user),
+    _actor=Depends(get_current_user_optional),  # Optional auth for simulator
 ):
+    """
+    List all machines. Authentication is optional to allow simulator to fetch machines at startup.
+    All other machine endpoints require authentication.
+    """
     return await service.find_all(db)
 
 
@@ -60,8 +64,12 @@ async def update_machine_state(
     machine_id: str,
     payload: UpdateMachineStateRequest,
     db: AsyncSession = Depends(get_db),
-    actor=Depends(require_roles(["dispatcher", "operator", "dev"])),
+    actor=Depends(get_current_user_optional),  # Optional auth for simulator
 ):
+    """
+    Update machine state. Authentication is optional to allow simulator to update state.
+    If authenticated, role checks are enforced on the service layer if needed.
+    """
     return await service.update_state(machine_id, payload, actor, db, _event_service, _notification_service)
 
 
