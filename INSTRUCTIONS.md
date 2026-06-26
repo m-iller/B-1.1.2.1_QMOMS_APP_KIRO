@@ -144,15 +144,15 @@ The API is now available at:
 
 ### Default Credentials (after seed)
 
-| Username | Password | Role |
-|---|---|---|
-| `operator` | `operatorpass123` | operator |
+| Username     | Password            | Role       |
+| ------------ | ------------------- | ---------- |
+| `operator`   | `operatorpass123`   | operator   |
 | `dispatcher` | `dispatcherpass123` | dispatcher |
-| `manager` | `managerpass123` | manager |
-| `admin` | `adminpass123` | admin |
-| `mechanic` | `mechanicpass123` | mechanic |
-| `it` | `itpass123` | IT |
-| `owner` | `ownerpass123` | owner |
+| `manager`    | `managerpass123`    | manager    |
+| `admin`      | `adminpass123`      | admin      |
+| `mechanic`   | `mechanicpass123`   | mechanic   |
+| `it`         | `itpass123`         | IT         |
+| `owner`      | `ownerpass123`      | owner      |
 
 ### Role Permissions
 
