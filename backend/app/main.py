@@ -66,83 +66,101 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
 # ---------------------------------------------------------------------------
 # Module routers
 # ---------------------------------------------------------------------------
+print("Loading module routers...")
+
 try:
     from app.modules.auth.router import router as auth_router
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
-except ImportError:
-    pass
+    print("✓ auth router loaded")
+except Exception as e:
+    print(f"✗ auth router failed: {e}")
 
 try:
     from app.modules.machine.router import router as machine_router
     app.include_router(machine_router, prefix="/machines", tags=["machines"])
-except ImportError:
-    pass
+    print("✓ machine router loaded")
+except Exception as e:
+    print(f"✗ machine router failed: {e}")
 
 try:
     from app.modules.telemetry.router import router as telemetry_router
     app.include_router(telemetry_router, prefix="/telemetry", tags=["telemetry"])
-except ImportError:
-    pass
+    print("✓ telemetry router loaded")
+except Exception as e:
+    print(f"✗ telemetry router failed: {e}")
 
 try:
     from app.modules.task.router import router as task_router
     app.include_router(task_router, tags=["tasks"])
-except ImportError:
-    pass
+    print("✓ task router loaded")
+except Exception as e:
+    print(f"✗ task router failed: {e}")
 
 try:
     from app.modules.event.router import router as event_router
     app.include_router(event_router, tags=["events"])
-except ImportError:
-    pass
+    print("✓ event router loaded")
+except Exception as e:
+    print(f"✗ event router failed: {e}")
 
 try:
     from app.modules.zone.router import router as zone_router
     app.include_router(zone_router, prefix="/zones", tags=["zones"])
-except ImportError:
-    pass
+    print("✓ zone router loaded")
+except Exception as e:
+    print(f"✗ zone router failed: {e}")
 
 try:
     from app.modules.report.router import router as report_router
     app.include_router(report_router, prefix="/reports", tags=["reports"])
-except ImportError:
-    pass
+    print("✓ report router loaded")
+except Exception as e:
+    print(f"✗ report router failed: {e}")
 
 try:
     from app.modules.notification.router import router as notification_router
     app.include_router(notification_router, prefix="/notifications", tags=["notifications"])
-except ImportError:
-    pass
+    print("✓ notification router loaded")
+except Exception as e:
+    print(f"✗ notification router failed: {e}")
 
 try:
     from app.modules.map_config.router import router as map_config_router
     app.include_router(map_config_router, prefix="/map-config", tags=["map_config"])
-except ImportError:
-    pass
+    print("✓ map_config router loaded successfully")
+except Exception as e:
+    print(f"WARNING: Failed to load map_config router: {e}")
+    traceback.print_exc()
 
 try:
     from app.modules.dev.router import router as dev_router
     app.include_router(dev_router, tags=["DELETE_BEFORE_PROD"])
-except ImportError:
-    pass
+    print("✓ dev router loaded")
+except Exception as e:
+    print(f"✗ dev router failed: {e}")
 
 try:
     from app.modules.analytics.router import router as analytics_router
     app.include_router(analytics_router, tags=["analytics"])
-except ImportError:
-    pass
+    print("✓ analytics router loaded")
+except Exception as e:
+    print(f"✗ analytics router failed: {e}")
 
 try:
     from app.modules.route.router import router as route_router
     app.include_router(route_router, prefix="/routes", tags=["routes"])
-except ImportError:
-    pass
+    print("✓ route router loaded")
+except Exception as e:
+    print(f"✗ route router failed: {e}")
 
 try:
     from app.modules.role_permissions.router import router as role_permissions_router
     app.include_router(role_permissions_router, prefix="/role-permissions", tags=["role-permissions"])
-except ImportError:
-    pass
+    print("✓ role_permissions router loaded")
+except Exception as e:
+    print(f"✗ role_permissions router failed: {e}")
+
+print("Finished loading routers\n")
 
 
 # ---------------------------------------------------------------------------
