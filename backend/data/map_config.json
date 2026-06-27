@@ -12,6 +12,11 @@
       "name": "Antenna 2",
       "lat": 60.0525,
       "lng": 60.0525
+    },
+    {
+      "name": "Antenna 3",
+      "lat": 60.058,
+      "lng": 0.0
     }
   ]
 }
